@@ -1,0 +1,102 @@
+{
+    "rank": 7,
+    "seed": 12345,
+    "conf": {
+        "num_processes": 10,
+        "brunel_params": {
+            "NE": 900,
+            "NI": 225,
+            "model_params": {
+                "E_L": 0.0,
+                "C_m": 250.0,
+                "tau_m": 10.0,
+                "t_ref": 0.5,
+                "Theta_rel": 20.0,
+                "V_reset_rel": 0.0,
+                "tau_syn_ex": 0.3258272240372284,
+                "tau_syn_in": 0.3258272240372284,
+                "V_m_rel": 0.0
+            },
+            "randomize_Vm": true,
+            "mean_potential": 5.7,
+            "sigma_potential": 7.2,
+            "delay": 1.5,
+            "JE": 0.14,
+            "sigma_w": 3.47,
+            "g": -5.0,
+            "stdp_params": {
+                "alpha": 0.0513,
+                "lambda": 0.1,
+                "mu_plus": 0.4,
+                "mu_minus": 0.4,
+                "tau_plus": 15.0,
+                "tau_minus": 15.0
+            },
+            "stdp_delay": 1.5,
+            "eta": 1.685,
+            "filestem": ".",
+            "poisson_rate": 20856.037200898867,
+            "recorder_label": "alpha_0.0513_spikes_7",
+            "connection_rules": {
+                "inhibitory": {
+                    "rule": "fixed_indegree",
+                    "indegree": 225
+                },
+                "excitatory": {
+                    "rule": "fixed_indegree",
+                    "indegree": 900
+                }
+            }
+        },
+        "simulation_params": {
+            "scale": 0.1,
+            "seed": 12345,
+            "simtime": 250.0,
+            "presimtime": 50.0,
+            "dt": 0.1,
+            "stdp": false,
+            "record_spikes": true,
+            "show_plot": false,
+            "raster_plot": true,
+            "path_name": ".",
+            "log_file": "log",
+            "use_all_to_all": false,
+            "check_conns": false,
+            "use_dc_input": false,
+            "verbose_log": false
+        }
+    },
+    "timers": {
+        "time_create": 31618733,
+        "time_connect_local": 3728326,
+        "time_connect_remote": 316650467,
+        "time_connect": 320378793,
+        "time_initialize": 82176,
+        "time_construct": 352004419,
+        "time_calibrate": 344904247,
+        "time_presimulate": 1194569605,
+        "time_simulate": 5726600999,
+        "time_total": 7618161446
+    },
+    "stats": {
+        "excitatory_firing_rate": 9.413333333333332,
+        "inhibitory_firing_rate": 9.724444444444446
+    },
+    "kernel_status": {
+        "time_resolution": 0.10000000149011612,
+        "max_spike_num_fact": 1.0,
+        "max_spike_per_host_fact": 1.0,
+        "max_remote_spike_num_fact": 1.0,
+        "rnd_seed": 12345,
+        "verbosity_level": 4,
+        "max_spike_buffer_size": 20,
+        "max_node_n_bits": 20,
+        "max_syn_n_bits": 6,
+        "max_delay_n_bits": 12,
+        "conn_struct_type": 0,
+        "spike_buffer_algo": 1,
+        "print_time": false,
+        "remove_conn_key": false,
+        "remote_spike_mul": false
+    }
+}

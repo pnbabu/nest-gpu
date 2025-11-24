@@ -34,7 +34,7 @@ See `here <https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-vario
 to choose the best NVIDIA GPU architecture for your GPU card.
 
 +-----------------------------------------------+----------------------------------------------------------------+
-| ``-Dwith-gpu-arch=[int]``                     | Specify the GPU compute architecture. [default=70]             |
+| ``-Dwith-gpu-arch=[int]``                     | Specify the GPU compute architecture. [default=80]             |
 +-----------------------------------------------+----------------------------------------------------------------+
 
 Change parallelization scheme
@@ -43,12 +43,18 @@ Change parallelization scheme
 +-----------------------------------------------+----------------------------------------------------------------+
 | ``-Dwith-mpi=[OFF|ON]``                       | Build with MPI parallelization. [default=ON]                   |
 +-----------------------------------------------+----------------------------------------------------------------+
+| ``-Dwith-openmp=[OFF|ON|<OpenMP-Flag>]``      | Enable OpenMP multi-threading.                                 |
+|                                               | Optionally set OMP compiler flag. [default=ON]                 |
++-----------------------------------------------+----------------------------------------------------------------+
 
+.. warning::
+
+    Currently NEST GPU must be installed with MPI to avoid compilation errors.
 
 External libraries
 ------------------
 
-+-----------------------------------------------+----------------------------------------------------------------+
++-----------------------------------------------+----------------------------------------------------------------
 | ``-Dwith-ltdl=[OFF|ON]``                      | Build with ltdl library. To set a specific ltdl, give the      |
 |                                               | install path. NEST GPU uses ltdl for dynamic loading of        |
 |                                               | external user modules. [default=OFF]                           |

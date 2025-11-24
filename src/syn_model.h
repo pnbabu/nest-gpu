@@ -20,43 +20,85 @@
  *
  */
 
-
-
-
-
 #ifndef SYNMODEL_H
 #define SYNMODEL_H
 
+#include "stdp.h"
 #include <string>
 #include <vector>
 
 #define MAX_SYN_DT 16384
-enum SynModels {
-  i_null_syn_model = 0, i_test_syn_model, i_stdp_model,
+
+extern __device__ int* SynGroupTypeMap;
+extern __device__ float** SynGroupParamMap;
+
+__device__ void TestSynModelUpdate( float* w, float Dt, float* param );
+
+enum SynModels
+{
+  i_null_syn_model = 0,
+  i_test_syn_model,
+  i_stdp_model,
   N_SYN_MODELS
 };
 
-const std::string syn_model_name[N_SYN_MODELS] = {
-  "", "test_syn_model", "stdp"
-};
+__device__ __forceinline__ void
+SynapseUpdate( int syn_group, float* w, float Dt )
+{
+  int syn_type = SynGroupTypeMap[ syn_group - 1 ];
+  float* param = SynGroupParamMap[ syn_group - 1 ];
+  switch ( syn_type )
+  {
+  case i_test_syn_model:
+    TestSynModelUpdate( w, Dt, param );
+    break;
+  case i_stdp_model:
+    stdp_ns::STDPUpdate( w, Dt, param );
+    break;
+  }
+}
+
+const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp" };
 
 class SynModel
 {
- protected:
+protected:
   int type_;
   int n_param_;
-  const std::string *param_name_;
-  float *d_param_arr_;
- public:
-  virtual int Init() {return 0;}
+  const std::string* param_name_;
+  float* d_param_arr_;
+
+public:
+  virtual int
+  Init()
+  {
+    return 0;
+  }
   int GetNParam();
-  std::vector<std::string> GetParamNames();
-  bool IsParam(std::string param_name);
-  int GetParamIdx(std::string param_name);
-  virtual float GetParam(std::string param_name);
-  virtual int SetParam(std::string param_name, float val);
+  std::vector< std::string > GetParamNames();
+  bool IsParam( std::string param_name );
+  int GetParamIdx( std::string param_name );
+  virtual float GetParam( std::string param_name );
+  virtual int SetParam( std::string param_name, float val );
 
   friend class NESTGPU;
+};
+
+class STDP : public SynModel
+{
+  int _Init();
+
+public:
+  STDP()
+  {
+    _Init();
+  }
+
+  int
+  Init()
+  {
+    return _Init();
+  }
 };
 
 #endif

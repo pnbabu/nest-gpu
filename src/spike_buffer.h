@@ -20,129 +20,63 @@
  *
  */
 
-
-
-
-
 #ifndef SPIKEBUFFER_H
 #define SPIKEBUFFER_H
-#include "connect.h"
+// #include "connect.h"
 
+extern __constant__ bool ExternalSpikeFlag;
 extern __device__ int MaxSpikeBufferSize;
 extern __device__ int NSpikeBuffer;
-extern __device__ int MaxDelayNum;
 
 extern int h_NSpikeBuffer;
-extern bool ConnectionSpikeTimeFlag;
 
-extern float *d_LastSpikeHeight; // [NSpikeBuffer];
-extern __device__ float *LastSpikeHeight; //
+extern float* d_LastSpikeMul;          // [NSpikeBuffer];
+extern __device__ float* LastSpikeMul; //
 
-extern long long *d_LastSpikeTimeIdx; // [NSpikeBuffer];
-extern __device__ long long *LastSpikeTimeIdx; //
+extern long long* d_LastSpikeTimeIdx;          // [NSpikeBuffer];
+extern __device__ long long* LastSpikeTimeIdx; //
 
-extern long long *d_LastRevSpikeTimeIdx; // [NSpikeBuffer];
-extern __device__ long long *LastRevSpikeTimeIdx; //
+extern long long* d_LastRevSpikeTimeIdx;          // [NSpikeBuffer];
+extern __device__ long long* LastRevSpikeTimeIdx; //
 
-extern float *d_ConnectionWeight; // [NConnection];
-extern __device__ float *ConnectionWeight; //
+extern unsigned short* d_ConnectionSpikeTime;          // [NConnection];
+extern __device__ unsigned short* ConnectionSpikeTime; //
 
-extern unsigned char *d_ConnectionSynGroup; // [NConnection];
-extern __device__ unsigned char *ConnectionSynGroup; //
-
-extern unsigned short *d_ConnectionSpikeTime; // [NConnection];
-extern __device__ unsigned short *ConnectionSpikeTime; //
-
-extern int *d_ConnectionGroupSize;
-extern __device__ int *ConnectionGroupSize;
-// Output connections from the source node are organized in groups
-// All connection of a group have the same delay
-
-extern int *d_ConnectionGroupDelay;
-extern __device__ int *ConnectionGroupDelay;
-// delay associated to all connections of this group
-
-extern int *d_ConnectionGroupTargetSize;
-extern __device__ int *ConnectionGroupTargetSize;
-// number of output connections in the group i_delay
-
-extern unsigned int **d_ConnectionGroupTargetNode;
-extern __device__ unsigned int **ConnectionGroupTargetNode;
-// is a pointer to an integer array of size ConnectionGroupTargetSize
-// that contains the indexes of the target nodes
-
-extern unsigned char **d_ConnectionGroupTargetSynGroup;
-extern __device__ unsigned char **ConnectionGroupTargetSynGroup;
-// Connection target synapse group
-
-extern float **h_ConnectionGroupTargetWeight;
-extern float **d_ConnectionGroupTargetWeight;
-extern __device__ float **ConnectionGroupTargetWeight;
-// Connection weight
-
-extern unsigned short **d_ConnectionGroupTargetSpikeTime;
-extern __device__ unsigned short **ConnectionGroupTargetSpikeTime;
-// Connection last spike time index
-
-//////////////////////////////////////////////////////////////////////
-
-extern int *d_SpikeBufferSize;
-extern __device__ int *SpikeBufferSize;
+extern int* d_SpikeBufferSize;
+extern __device__ int* SpikeBufferSize;
 // number of spikes stored in the buffer
 
-extern int *d_SpikeBufferIdx0;
-extern __device__ int *SpikeBufferIdx0;
+extern int* d_SpikeBufferIdx0;
+extern __device__ int* SpikeBufferIdx0;
 // index of most recent spike stored in the buffer
 
-extern int *d_SpikeBufferTimeIdx;
-extern __device__ int *SpikeBufferTimeIdx;
+extern int* d_SpikeBufferTimeIdx;
+extern __device__ int* SpikeBufferTimeIdx;
 // time index of the spike
 
-extern int *d_SpikeBufferConnIdx;
-extern __device__ int *SpikeBufferConnIdx;
+extern int* d_SpikeBufferConnIdx;
+extern __device__ int* SpikeBufferConnIdx;
 // index of the next connection group that will emit this spike
 
-extern float *d_SpikeBufferHeight;
-extern __device__ float *SpikeBufferHeight;
-// spike height
+extern float* d_SpikeBufferMul;
+extern __device__ float* SpikeBufferMul;
+// spike mul
 
-
-extern unsigned int *d_RevConnections; //[i] i=0,..., n_rev_conn - 1;
-extern __device__ unsigned int *RevConnections;
-
-extern int *d_TargetRevConnectionSize; //[i] i=0,..., n_neuron-1;
-extern __device__ int *TargetRevConnectionSize;
-
-extern unsigned int **d_TargetRevConnection; //[i][j] j<=RevConnectionSize[i]-1
-extern __device__ unsigned int **TargetRevConnection;
-
-
-__device__ void PushSpike(int i_spike_buffer, float height);
+__device__ void PushSpike( int i_spike_buffer, float mul );
 
 __global__ void SpikeBufferUpdate();
 
-__global__ void DeviceSpikeBufferInit(int n_spike_buffers, int max_delay_num,
-				int max_spike_buffer_size,
-				long long *last_spike_time_idx,
-				float *last_spike_height,
-				float *conn_weight,
-				unsigned char *conn_syn_group,
-				unsigned short *conn_spike_time,      
-				int *conn_group_size, int *conn_group_delay,
-				int *conn_group_target_size,
-				unsigned int **conn_group_target_node,
-				unsigned char **conn_group_target_syn_group,
-				float **conn_group_target_weight,
-				unsigned short **conn_group_target_spike_time,
-				int *spike_buffer_size, int *spike_buffer_idx0,
-				int *spike_buffer_time,
-				int *spike_buffer_conn,
-				float *spike_buffer_height,
-				unsigned int *rev_conn,
-				int *target_rev_conn_size,
-				unsigned int **target_rev_conn,
-				long long *last_rev_spike_time_idx);
+__global__ void DeviceSpikeBufferInit( int n_spike_buffers,
+  int max_spike_buffer_size,
+  long long* last_spike_time_idx,
+  float* last_spike_mul,
+  int* spike_buffer_size,
+  int* spike_buffer_idx0,
+  int* spike_buffer_time,
+  int* spike_buffer_conn,
+  float* spike_buffer_mul,
+  long long* last_rev_spike_time_idx );
 
-int SpikeBufferInit(NetConnection *net_connection, int max_spike_buffer_size);
+int spikeBufferInit( uint n_local_nodes, uint n_image_nodes, int max_spike_buffer_size, int spike_buffer_algo );
 
 #endif

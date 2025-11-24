@@ -1,0 +1,28 @@
+
+              -- NEST GPU --
+
+  Copyright (C) 2021 The NEST Initiative
+
+ This program is provided AS IS and comes with
+ NO WARRANTY. See the file LICENSE for details.
+
+ Homepage: https://github.com/nest/nest-gpu
+
+[[10.0, 400.0], [10.0, 400.0]]
+[[1.0, 0.5], [1.0, 0.5]]
+
+[[4.0]]
+[[2.0]]
+
+[[50.0, 20.0, 80.0]]
+[[0.10000000149011612, 0.30000001192092896, 0.20000000298023224]]
+
+
+[[4.0], [50.0, 20.0, 80.0], [10.0, 400.0], [10.0, 400.0]]
+[[2.0], [0.10000000149011612, 0.30000001192092896, 0.20000000298023224], [1.0, 0.5], [1.0, 0.5]]
+
+
+[{'spike_times': [4.0], 'spike_gen_mul': [2.0]}]
+
+
+[{'spike_times': [4.0], 'spike_gen_mul': [2.0]}, {'spike_times': [50.0, 20.0, 80.0], 'spike_gen_mul': [0.10000000149011612, 0.30000001192092896, 0.20000000298023224]}, {'spike_times': [10.0, 400.0], 'spike_gen_mul': [1.0, 0.5]}, {'spike_times': [10.0, 400.0], 'spike_gen_mul': [1.0, 0.5]}]
