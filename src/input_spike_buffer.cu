@@ -158,6 +158,7 @@ GetInputSpikes( inode_t i_node0,
       return;
     }
     int n_slots = max_input_delay_[ i_target ][ i_port ];
+    if ( n_slots < 1 ) return;
     int i_slot = NESTGPUTimeIdx % n_slots;
 
     double spike_input = input_spike_buffer_[ i_target ][ i_port ][ i_slot ];
