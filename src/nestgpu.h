@@ -628,7 +628,7 @@ public:
 
   int PrintTimers(int verbosity_level = 5);
 
-  int ConnectMpiInit();
+  int ConnectMpiInit( int argc, char** argv );
 
   int FakeConnectMpiInit(int n_hosts, int this_host);
 
