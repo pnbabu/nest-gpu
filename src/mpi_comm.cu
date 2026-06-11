@@ -348,7 +348,7 @@ NESTGPU::RecvSpikeFromRemote()
 }
 
 int
-NESTGPU::ConnectMpiInit()
+NESTGPU::ConnectMpiInit( int argc, char** argv )
 {
 #ifdef HAVE_MPI
   CheckUncalibrated( "MPI connections cannot be initialized after calibration" );
@@ -356,7 +356,8 @@ NESTGPU::ConnectMpiInit()
   MPI_Initialized( &initialized );
   if ( !initialized )
   {
-    MPI_Init( nullptr, nullptr );
+    int provided_thread_level;
+    MPI_Init_thread( &argc, &argv, MPI_THREAD_FUNNELED, &provided_thread_level );
   }
   int n_hosts;
   int this_host;

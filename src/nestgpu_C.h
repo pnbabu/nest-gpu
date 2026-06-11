@@ -150,7 +150,7 @@ extern "C"
 
   int NESTGPU_PrintTimers();
 
-  int NESTGPU_ConnectMpiInit();
+  int NESTGPU_ConnectMpiInit( int argc, char** argv );
   
   int NESTGPU_FakeConnectMpiInit(int n_hosts, int this_host);
 

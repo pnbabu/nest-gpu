@@ -4425,6 +4425,7 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::freeConnRandomGenerator()
       {
 	if (conn_random_generator_[ i_host ][ j_host ] != nullptr) { 
 	  CURAND_CALL( curandDestroyGenerator( conn_random_generator_[ i_host ][ j_host ] ) );
+    conn_random_generator_[ i_host ][ j_host ] = nullptr;
 	}
       }
     }

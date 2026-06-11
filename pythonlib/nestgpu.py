@@ -1577,7 +1577,13 @@ NESTGPU_ConnectMpiInit = _nestgpu.NESTGPU_ConnectMpiInit
 NESTGPU_ConnectMpiInit.restype = ctypes.c_int
 def ConnectMpiInit():
     "Initialize MPI connectivity"
-    ret = NESTGPU_ConnectMpiInit()
+    argc = len(sys.argv)
+    c_argc = ctypes.c_int(argc)
+    c_argv = (ctypes.c_char_p * (argc + 1))()
+    for i, arg in enumerate(sys.argv):
+        c_argv[i] = arg.encode("utf-8", "strict") + b"\0"
+    c_argv[argc] = None
+    ret = NESTGPU_ConnectMpiInit(c_argc, c_argv)
     if GetErrorCode() != 0:
         raise ValueError(GetErrorMessage())
     return ret
