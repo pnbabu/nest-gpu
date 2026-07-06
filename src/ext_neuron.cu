@@ -20,6 +20,96 @@
  *
  */
 
+/**
+ * @file ext_neuron.cu
+ * @brief External neuron implementation for hybrid simulations
+ *
+ * This file implements the ext_neuron (external neuron) model, which
+ * enables hybrid simulations combining NEST GPU with external neuron
+ * simulators or custom neuron models.
+ *
+ * Functionality:
+ * --------------
+ * The ext_neuron acts as an interface neuron:
+ * - Receives synaptic inputs from NEST GPU neurons
+ * - Makes input values accessible to external systems
+ * - Can receive external spike inputs
+ * - Passes through synaptic activity
+ * - Enables bidirectional communication
+ *
+ * Key Features:
+ * -------------
+ * - Multi-port input support
+ * - Real-time synaptic monitoring
+ * - Flexible port configuration
+ * - Hybrid simulation interface
+ * - External system integration
+ *
+ * Applications:
+ * -------------
+ * - Hybrid GPU/CPU simulations
+ * - Custom neuron model integration
+ * - Co-simulation with other simulators
+ * - Real-time neural interfaces
+ * - Neuromorphic hardware integration
+ * - Closed-loop simulations
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel for port value updates:
+ * - Parallel port monitoring
+ * - Efficient value extraction
+ * - Coalesced memory access
+ * - Minimal simulation overhead
+ *
+ * State Variables:
+ * ----------------
+ * - Port input values: Synaptic inputs per port
+ * - Port output values: External access to activity
+ * - Multi-port support: Receptor-specific monitoring
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Receives inputs from NEST GPU neurons
+ * - External systems: Access to port values
+ * - Spike injection: External spike input
+ * - Recording: Monitor synaptic activity
+ *
+ * Performance:
+ * ------------
+ * - Very low overhead
+ * - Efficient port monitoring
+ * - Minimal impact on simulation speed
+ * - Scalable to many ports
+ *
+ * Thread Safety:
+ * --------------
+ * - Thread-safe port access
+ * - Concurrent monitoring supported
+ * - Atomic value updates
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create ext_neuron instances
+ * 2. Configure port structure
+ * 3. Connect to NEST GPU neurons
+ * 4. External system monitors port values
+ * 5. Optionally inject external spikes
+ *
+ * Hybrid Simulation:
+ * ------------------
+ * Workflow for hybrid simulations:
+ * 1. NEST GPU simulates most neurons
+ * 2. ext_neuron interfaces external systems
+ * 3. Synaptic inputs monitored in real-time
+ * 4. External computation performed
+ * 5. Results fed back to network
+ *
+ * @see ext_neuron.h External neuron interface
+ * @see nestgpu.h Main simulation engine
+ * @see connect.h Connection management
+ */
+
 #include "ext_neuron.h"
 #include <cmath>
 #include <config.h>

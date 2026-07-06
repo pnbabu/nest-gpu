@@ -20,6 +20,72 @@
  *
  */
 
+/**
+ * @file aeif_psc_alpha.cu
+ * @brief Adaptive exponential integrate-and-fire neuron with current-based alpha synapses
+ *
+ * This file implements the aeif_psc_alpha neuron model, combining
+ * exponential integrate-and-fire dynamics with adaptation current and
+ * current-based synaptic inputs with alpha-function postsynaptic currents.
+ *
+ * Mathematical Model:
+ * -------------------
+ * The aeif_psc_alpha model extends standard integrate-and-fire:
+ *
+ * Membrane potential dynamics:
+ * \[ C_m \frac{dV}{dt} = -g_L(V-E_L) + g_L \Delta_T \exp\left(\frac{V-V_{th}}{\Delta_T}\right) - w + I_{syn} + I_e \]
+ *
+ * Adaptation current dynamics:
+ * \[ \tau_w \frac{dw}{dt} = a(V-E_L) - w \]
+ *
+ * Alpha function PSC:
+ * The alpha function provides realistic synaptic dynamics:
+ * \[ I_{syn}(t) = \frac{t}{\tau_{syn}} \exp(1 - t/\tau_{syn}) \]
+ *
+ * Key Features:
+ * -------------
+ * - Exponential approach to spike threshold
+ * - Spike-triggered adaptation current
+ * - Current-based synaptic inputs
+ * - Alpha-function postsynaptic currents
+ * - Realistic synaptic dynamics
+ *
+ * GPU Implementation:
+ * ------------------
+ * - RK5 (Runge-Kutta 5th order) integration
+ * - Parallel updates across populations
+ * - Efficient memory access patterns
+ * - Spike detection on GPU
+ *
+ * Integration Method:
+ * ------------------
+ * Uses RK5 for accurate integration:
+ * - Adaptive stepsize control
+ * - High accuracy for stiff equations
+ * - Stable for physiological parameters
+ *
+ * Model Parameters:
+ * ----------------
+ * - C_m: Membrane capacitance (pF)
+ * - g_L: Membrane conductance (nS)
+ * - E_L: Resting potential (mV)
+ * - V_th: Spike threshold (mV)
+ * - Delta_T: Slope factor (mV)
+ * - a, b: Adaptation parameters
+ * - tau_w: Adaptation time constant (ms)
+ * - tau_syn: Synaptic time constant (ms)
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Synaptic inputs via currents
+ * - Spike buffer: Output spike delivery
+ * - Recording: Multimeter compatibility
+ *
+ * @see aeif_psc_alpha.h Model interface
+ * @see aeif_psc_alpha_kernel.h GPU kernels
+ * @see rk5.h Integration method
+ */
+
 #include "aeif_psc_alpha.h"
 #include "aeif_psc_alpha_kernel.h"
 #include "rk5.h"

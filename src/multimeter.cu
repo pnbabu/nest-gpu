@@ -20,6 +20,118 @@
  *
  */
 
+/**
+ * @file multimeter.cu
+ * @brief Multimeter recording device for continuous variable monitoring
+ *
+ * This file implements the multimeter, a versatile recording device that
+ * captures continuous time-series data from neuron state variables during
+ * simulation. It's essential for analyzing network dynamics and neuron behavior.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The multimeter operates as a passive recording device:
+ * - Connects to multiple neurons simultaneously
+ * - Records specified state variables at configurable intervals
+ * - Supports both file output and in-memory storage
+ * - Handles multiple variables from multiple neurons
+ *
+ * Recording Strategy:
+ * ------------------
+ * Data capture and storage:
+ * 1. Periodic sampling of neuron state variables
+ * 2. Timestamped recording of variable values
+ * 3. Efficient buffering on GPU
+ * 4. Optional file writing
+ * 5. Flexible output formats
+ *
+ * Key Features:
+ * -------------
+ * - Multi-variable recording
+ * - Multi-neuron monitoring
+ * - Configurable sampling intervals
+ * - Port-specific variable recording
+ * - File or memory output options
+ * - Efficient GPU memory usage
+ *
+ * Record Class:
+ * -------------
+ * Each Record instance manages:
+ * - Neuron references
+ * - Variable names to record
+ * - Target neuron indices
+ * - Port specifications
+ * - Output file management
+ * - Data buffering
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle data capture:
+ * - Parallel variable reading across neurons
+ * - Efficient memory access patterns
+ * - Coalesced writes to recording buffers
+ * - Minimal simulation overhead
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU: Creates and manages multimeters
+ * - BaseNeuron: Access to neuron state variables
+ * - Recording system: Data storage and retrieval
+ * - Python interface: Data access for analysis
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create multimeter/record instance
+ * 2. Specify neurons, variables, and ports
+ * 3. Configure recording interval
+ * 4. Run simulation
+ * 5. Retrieve recorded data
+ *
+ * Performance:
+ * ------------
+ * - Minimal impact on simulation speed
+ * - Efficient GPU memory usage
+ * - Scalable to many recording sites
+ * - Fast data retrieval
+ *
+ * Thread Safety:
+ * --------------
+ * - Recording is thread-safe on GPU
+ * - Multiple multimeters can operate simultaneously
+ * - Data access requires synchronization
+ *
+ * Applications:
+ * -------------
+ * - Membrane potential monitoring (V_m)
+ * - Synaptic conductance tracking (g_ex, g_in)
+ * - Adaptation current analysis (w)
+ * - Calcium concentration monitoring
+ * - Network dynamics visualization
+ * - Parameter tuning validation
+ *
+ * Scientific Background:
+ * ----------------------
+ * Multimeters are essential for:
+ * - Analyzing neuron firing patterns
+ * - Studying network oscillations
+ * - Validating model parameters
+ * - Understanding synaptic integration
+ * - Investigating adaptation mechanisms
+ * - Measuring temporal dynamics
+ *
+ * Data Format:
+ * ------------
+ * Recorded data format:
+ * - First column: Time (ms)
+ * - Subsequent columns: Variable values
+ * - Row-based organization
+ * - Configurable precision
+ *
+ * @see multimeter.h Multimeter interface and classes
+ * @see nestgpu.h Main simulation engine
+ * @see base_neuron.h Neuron state variable access
+ */
+
 #include "cuda_error.h"
 #include "multimeter.h"
 #include <config.h>

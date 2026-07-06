@@ -20,6 +20,96 @@
  *
  */
 
+/**
+ * @file rev_spike.cu
+ * @brief Reverse connection spike delivery and STDP support for NEST GPU
+ *
+ * This file implements reverse connection spike delivery, which is
+ * essential for spike-timing-dependent plasticity (STDP) and other
+ * learning rules that require postsynaptic spike information.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The reverse spike system:
+ * - Maintains reverse connection indices
+ * - Delivers postsynaptic spikes backwards
+ * - Enables STDP pair detection
+ * - Supports plasticity updates
+ * - Efficient backward communication
+ *
+ * Key Components:
+ * ---------------
+ * - RevSpikeNum: Reverse spike counts
+ * - RevSpikeTarget: Reverse target indices
+ * - RevSpikeNConn: Reverse connection counts
+ * - RevConnections: Reverse connection arrays
+ * - TargetRevConnection: Per-target reverse indices
+ *
+ * STDP Support:
+ * -------------
+ * Reverse connections enable:
+ * - Postsynaptic spike detection
+ * - Pre-post spike pair identification
+ * - Timing difference computation
+ * - Weight update calculation
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels for reverse spike delivery:
+ * - Parallel backward spike routing
+ * - Efficient connection lookup
+ * - Coalesced memory access
+ * - Atomic operations for consistency
+ *
+ * Spike Delivery Process:
+ * ----------------------
+ * 1. Postsynaptic neuron emits spike
+ * 2. Reverse spike delivered to presynaptic neurons
+ * 3. Spike timing information recorded
+ * 4. STDP pair detection performed
+ * 5. Weight updates applied
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Reverse connection establishment
+ * - Syn_model: Plasticity updates
+ * - STDP: Timing-based learning
+ * - Spike buffer: Spike management
+ *
+ * Performance:
+ * ------------
+ * - Efficient backward routing
+ * - Optimized memory access
+ * - Minimal STDP overhead
+ * - Scalable to large networks
+ *
+ * Thread Safety:
+ * --------------
+ * - Atomic reverse spike operations
+ * - Thread-safe weight updates
+ * - Consistent pair detection
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Postsynaptic neuron spikes
+ * 2. Reverse spike delivered
+ * 3. Presynaptic side receives timing
+ * 4. STDP pair identified
+ * 5. Weight updated accordingly
+ *
+ * Scientific Background:
+ * ----------------------
+ * Reverse spike delivery enables:
+ * - Bi-directional STDP
+ * - Triplet STDP
+ * - Neuromodulated plasticity
+ * - Complex learning rules
+ *
+ * @see rev_spike.h Reverse spike interface
+ * @see stdp.h STDP implementation
+ * @see syn_model.h Plasticity framework
+ */
+
 #include "connect.h"
 #include "cuda_error.h"
 #include "spike_buffer.h"

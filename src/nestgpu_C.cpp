@@ -2173,4 +2173,22 @@ extern "C"
     END_ERR_PROP return ret;
   }
 
+  bool reset_api()
+  {
+    BEGIN_ERR_PROP
+    {
+      delete NESTGPU_instance;
+      // throw std::runtime_error("segfault test");
+      NESTGPU_instance = nullptr;
+      if(NESTGPU_instance == nullptr)
+      {
+        printf("in reset api\n");
+      }
+      ConnSpec_instance = ConnSpec();
+      SynSpec_instance = SynSpec();
+      return true;
+    }
+      END_ERR_PROP
+      return false;
+  }
 }

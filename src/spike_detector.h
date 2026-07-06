@@ -20,6 +20,73 @@
  *
  */
 
+/**
+ * @file spike_detector.h
+ * @brief Spike detection and recording device implementation
+ *
+ * This file implements the spike_detector device, which records spike times
+ * from connected neurons during simulation. It provides the foundational
+ * recording mechanism for neural activity analysis.
+ *
+ * Technical Architecture:
+ * The spike detector operates as a special neuron model that receives
+ * spike events through the standard connection system and records their
+ * timing for later retrieval and analysis.
+ *
+ * Data Flow:
+ * 1. Neuron fires spike
+ * 2. Spike travels through connection (with weight and delay)
+ * 3. Spike detector receives spike event
+ * 4. Event timestamp and properties are recorded
+ * 5. Data accessible via GetRecordData() interface
+ *
+ * Memory Management:
+ * - Ring buffer for spike storage
+ * - GPU memory for spike timestamps
+ * - Host memory for data retrieval
+ * - Dynamic buffer expansion if needed
+ *
+ * GPU Implementation:
+ * - Device-side spike recording
+ * - Efficient memory access patterns
+ * - Minimal computational overhead
+ * - Coalesced writes for spike data
+ *
+ * Recording Modes:
+ * - Timestamp recording: Spike occurrence times
+ * - Weight recording: Connection weight at spike time
+ * - Multiplicity: Spike count per timestep
+ * - Continuous output: Time series with spike indicators
+ *
+ * Performance Characteristics:
+ * - Minimal overhead: ~10-20 cycles per spike
+ * - Memory bandwidth limited for high firing rates
+ * - Efficient for sparse spike trains
+ * - Scalable to many neurons
+ *
+ * Integration Points:
+ * - BaseNeuron: Inherits neuron interface
+ * - Connection system: Receives spikes via connections
+ * - Recording system: Part of data recording framework
+ * - Multimeter: Complementary continuous recording
+ *
+ * Usage in Network Models:
+ * - Neural coding analysis
+ * - Spike pattern detection
+ * - Network activity monitoring
+ * - Computational neuroscience research
+ *
+ * Implementation Details:
+ * - Inherits from BaseNeuron for integration
+ * - Specialized update logic for spike detection
+ * - Buffer management for spike storage
+ * - Data export functionality
+ *
+ * @see BaseNeuron Base class for neuron models
+ * @see multimeter.h Continuous variable recording
+ * @see spike_generator.h Spike pattern generation
+ */
+
 #ifndef SPIKEDETECTOR_H
 #define SPIKEDETECTOR_H
 

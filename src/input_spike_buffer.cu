@@ -1,3 +1,125 @@
+/*
+ *  input_spike_buffer.cu
+ *
+ *  This file is part of NEST GPU.
+ *
+ *  Copyright (C) 2021 The NEST Initiative
+ *
+ *  NEST GPU is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  NEST GPU is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with NEST GPU.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+/**
+ * @file input_spike_buffer.cu
+ * @brief Input spike buffering system for NEST GPU
+ *
+ * This file implements the input spike buffer system that manages the delivery
+ * of spikes from source to target neurons with appropriate delays. It's a critical
+ * component for realistic temporal dynamics in neural simulations.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The input spike buffer implements a ring buffer system:
+ * - Three-dimensional structure: [target_neuron][port][time_slot]
+ * - Cyclic management for efficient memory usage
+ * - Delay-based spike routing
+ * - Multi-port support for different synapse types
+ *
+ * Buffer Structure:
+ * -----------------
+ * The buffer is organized as:
+ * - n_input_ports_: Number of input ports per neuron
+ * - max_input_delay_: Maximum delay for each neuron/port
+ * - input_spike_buffer_: 3D array for spike storage
+ * - Slots organized cyclically for memory efficiency
+ *
+ * Spike Delivery Algorithm:
+ * -------------------------
+ * 1. Source neurons emit spikes at current time
+ * 2. Spikes routed based on connection delays
+ * 3. Spikes placed in appropriate buffer slots
+ * 4. At each time step, deliver spikes from current slot
+ * 5. Buffer slots cycle to maintain temporal precision
+ *
+ * Memory Organization:
+ * -------------------
+ * Efficient GPU memory layout:
+ * - Coalesced access patterns
+ * - Minimized memory fragmentation
+ * - Shared memory for frequently accessed delays
+ * - Efficient indexing calculations
+ *
+ * Key Device Variables:
+ * ---------------------
+ * - algo_: Buffer algorithm selector
+ * - n_input_ports_: Input port counts per neuron
+ * - max_input_delay_: Maximum delays per port
+ * - input_spike_buffer_: Main spike storage
+ * - first_out_connection_: Connection indexing
+ * - n_out_connections_: Outgoing connection counts
+ * - spike_mul_: Spike multiplicity weights
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle spike buffering:
+ * - Parallel spike delivery across neurons
+ * - Efficient memory access patterns
+ * - Minimized thread divergence
+ * - Optimized for high-throughput operation
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Connection information for routing
+ * - Spike buffers: Coordination with output system
+ * - Neuron models: Receive buffered spikes as inputs
+ * - Simulation loop: Buffer management each time step
+ *
+ * Performance Optimizations:
+ * ---------------------------
+ * - Circular buffer reduces memory allocation
+ * - Coalesced memory access patterns
+ * - Shared memory for delay information
+ * - Efficient indexing calculations
+ * - Batched spike delivery operations
+ *
+ * Multi-Port Support:
+ * ------------------
+ * Different receptor types supported:
+ * - Excitatory and inhibitory ports
+ * - Different synaptic dynamics per port
+ * - Port-specific delay management
+ * - Flexible receptor configuration
+ *
+ * Thread Safety:
+ * --------------
+ * - Spike delivery is thread-safe on GPU
+ * - Multiple neurons can buffer spikes concurrently
+ * - Buffer state managed atomically
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Initialize buffer with network dimensions
+ * 2. During simulation, emit spikes from sources
+ * 3. System routes spikes to appropriate buffer slots
+ * 4. Each time step, deliver current slot's spikes
+ * 5. Continue cycling through buffer slots
+ *
+ * @see input_spike_buffer.h Buffer interface and classes
+ * @see connect.h Connection management
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include "connect.h"
 
 extern __constant__ long long NESTGPUTimeIdx;
@@ -166,6 +288,13 @@ GetInputSpikes( inode_t i_node0,
     int port_input = i_target_rel * port_input_arr_step + port_input_port_step * i_port;
     int port_weight = i_target_rel * port_weight_arr_step + port_weight_port_step * i_port;
     double d_val = ( double ) port_input_arr[ port_input ] + spike_input * port_weight_arr[ port_weight ];
+    // if (d_val > 0)
+    // {
+    //   printf("port_input_arr: %lf\tspike_input: %lf\tport_weight_arr: %f\td_val: %lf\n",
+    //      port_input_arr[ port_input ], spike_input, port_weight_arr[ port_weight ], d_val);
+    //   printf("i_port: %d\ti_slot: %d\n", i_port, i_slot);
+    //   printf("Time of spike received: %ld\n", NESTGPUTimeIdx);
+    // }
     // if (i_target==37 && d_val > 700) {
     //   printf("port_input_arr: %lf\tspike_input: %lf\tport_weight_arr: %f\td_val: %lf\n",
     //      port_input_arr[ port_input ], spike_input, port_weight_arr[ port_weight ], d_val);

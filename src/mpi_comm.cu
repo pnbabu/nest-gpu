@@ -20,6 +20,77 @@
  *
  */
 
+/**
+ * @file mpi_comm.cu
+ * @brief MPI communication infrastructure for distributed NEST GPU simulations
+ *
+ * This file implements the Message Passing Interface (MPI) communication layer
+ * that enables distributed neural network simulations across multiple compute
+ * nodes and GPUs. It provides efficient spike communication and data exchange
+ * for large-scale network simulations.
+ *
+ * MPI Architecture:
+ * The system uses MPI for inter-process communication with:
+ * - Host-to-host spike communication
+ * - Efficient data serialization and compression
+ * - Asynchronous communication for overlap with computation
+ * - Scalable collective operations
+ *
+ * Key Components:
+ * - Spike Communication: Exchange spike data between hosts
+ * - Remote Connections: Manage cross-host synaptic connections
+ * - Bit Packing: Compress spike data for efficient transmission
+ * - Collective Operations: Allgather, broadcast, reduce operations
+ *
+ * Communication Patterns:
+ * - Point-to-point: Direct host-to-host spike exchange
+ * - Collective: All-to-all spike distribution
+ * - Asynchronous: Overlap communication with computation
+ * - Optimized: Minimize latency and bandwidth usage
+ *
+ * Bit Packing Compression:
+ * The implementation uses efficient bit packing to compress spike data:
+ * - Variable-width encoding for spike indices
+ * - Reduced memory footprint for transmission
+ * - Efficient compression/decompression algorithms
+ * - Transparent to user (automatic compression)
+ *
+ * Mathematical Background:
+ * For n spikes using b bits per spike:
+ * - Original size: n * 32 bits (using uint32_t)
+ * - Compressed size: n * b bits (where b < 32)
+ * - Compression ratio: 32/b
+ * - Memory savings: Significant for small b values
+ *
+ * GPU Integration:
+ * - CUDA-aware MPI when available
+ * - Direct GPU-to-GPU communication
+ * - Minimize host-device transfers
+ * - Efficient buffer management
+ *
+ * Performance Considerations:
+ * - Network bandwidth often the bottleneck
+ * - Latency hiding through asynchronous operations
+ * - Load balancing across hosts
+ * - Scalability to hundreds of nodes
+ *
+ * Usage Pattern:
+ * 1. Initialize MPI with ConnectMpiInit()
+ * 2. Create neurons on different hosts
+ * 3. Create cross-host connections
+ * 4. Simulation with automatic spike communication
+ * 5. Finalize MPI with MpiFinalize()
+ *
+ * Dependencies:
+ * - MPI library (OpenMPI, MVAPICH, etc.)
+ * - CUDA-aware MPI for GPU-direct communication
+ * - Compatible network interconnect (InfiniBand, etc.)
+ *
+ * @see remote_connect.h Cross-host connection management
+ * @see remote_spike.h Inter-host spike communication
+ * @see nestgpu.h MPI interface functions
+ */
+
 #include <config.h>
 
 #include <list>
@@ -36,16 +107,68 @@
 
 #ifdef HAVE_MPI
 #include <mpi.h>
-MPI_Request* recv_mpi_request;
+MPI_Request* recv_mpi_request; /**< MPI request handle for asynchronous receives */
 #endif
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// bit packing compression/decompression  used with MPI send/receive taken from 
-// https://stackoverflow.com/questions/49462207/how-to-compress-a-32-bit-array-elements-into-minimum-required-bit-elements
+// Bit packing compression/decompression for MPI spike communication
+// Algorithm reference: https://stackoverflow.com/questions/49462207
+// Compresses 32-bit array elements into minimum required bit elements
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @def MASK32
+ * @brief 32-bit mask for bit packing operations
+ *
+ * Used to mask the lower 32 bits of a 64-bit value during bit packing
+ * operations. This is essential for handling 32-bit array elements that
+ * may span two consecutive 32-bit words when bit-packed.
+ */
 #define MASK32 ((uint64_t)0xffffffff)
 
+/**
+ * @brief Write a value into a bit-packed array
+ *
+ * Writes a value into a specific position in a bit-packed array where
+ * each element uses only 'bits' bits instead of a full 32 bits.
+ *
+ * @param arr Array to write to (will be modified in-place)
+ * @param bits Number of bits per element (must be <= 32)
+ * @param i Index of the element to write
+ * @param value Value to write (must fit in 'bits' bits)
+ *
+ * Algorithm:
+ * 1. Calculate bit offset: bitoffset = i * bits
+ * 2. Find 32-bit word index: index = bitoffset / 32
+ * 3. Calculate shift within word: shift = bitoffset % 32
+ * 4. Create mask for 'bits' bits
+ * 5. Clear existing bits at position
+ * 6. Set new bits with value
+ * 7. Handle potential overflow to next word
+ *
+ * Mathematical Representation:
+ * If we have an array of n values each using b bits:
+ * @f[
+ * \text{total bits} = n \times b
+ * \text{total words} = \lceil (n \times b) / 32 \rceil
+ * @f]
+ *
+ * Example:
+ * @code
+ * uint32_t arr[100];  // Array for bit packing
+ * bitPackWrite(arr, 12, 5, 0xABC);  // Write 0xABC using 12 bits at position 5
+ * @endcode
+ *
+ * Performance:
+ * - O(1) operation per write
+ * - Minimal memory overhead
+ * - No dynamic allocation
+ *
+ * @note arr must have sufficient space for bit-packed data
+ * @warning value must fit within 'bits' bits (undefined behavior otherwise)
+ * @see bitPackRead() for reading bit-packed values
+ */
 void bitPackWrite(uint32_t *arr, int bits, int i, int value) {
     int bitoffset = i * bits;
     int index = bitoffset / 32;
@@ -57,6 +180,46 @@ void bitPackWrite(uint32_t *arr, int bits, int i, int value) {
     arr[index+1] = (twoval >> 32) & MASK32;
 }
 
+/**
+ * @brief Read a value from a bit-packed array
+ *
+ * Reads a value from a specific position in a bit-packed array where
+ * each element uses only 'bits' bits instead of a full 32 bits.
+ *
+ * @param arr Array to read from
+ * @param bits Number of bits per element (must be <= 32)
+ * @param i Index of the element to read
+ * @return Value at position i
+ *
+ * Algorithm:
+ * 1. Calculate bit offset: bitoffset = i * bits
+ * 2. Find 32-bit word index: index = bitoffset / 32
+ * 3. Calculate shift within word: shift = bitoffset % 32
+ * 4. Create mask for 'bits' bits
+ * 5. Extract bits from potentially two words
+ * 6. Apply mask to get final value
+ *
+ * Mathematical Representation:
+ * Reading value v at position i:
+ * @f[
+ * v = \left(\sum_{j=0}^{1} arr[index+j] \times 2^{32 \times j}\right) >> shift) \times (2^bits - 1)
+ * @f]
+ *
+ * Example:
+ * @code
+ * uint32_t arr[100];  // Bit-packed array
+ * int value = bitPackRead(arr, 12, 5);  // Read 12-bit value at position 5
+ * @endcode
+ *
+ * Performance:
+ * - O(1) operation per read
+ * - No memory allocation
+ * - Efficient bit manipulation
+ *
+ * @note arr must contain valid bit-packed data
+ * @warning Undefined behavior if i is out of bounds
+ * @see bitPackWrite() for writing bit-packed values
+ */
 int bitPackRead(const uint32_t *arr, int bits, int i) {
     int bitoffset = i * bits;
     int index = bitoffset / 32;

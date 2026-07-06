@@ -20,6 +20,153 @@
  *
  */
 
+/**
+ * @file neuron_models.cu
+ * @brief Neuron model factory and management for NEST GPU
+ *
+ * This file implements the factory pattern for creating and managing
+ * different neuron models in NEST GPU. It provides a unified interface
+ * for instantiating various neuron types and managing their lifecycle.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The neuron model system uses a factory pattern to create neuron
+ * instances based on string names. Each neuron model is implemented
+ * as a separate class inheriting from BaseNeuron.
+ *
+ * Available Neuron Models:
+ * ------------------------
+ * Integrate-and-Fire Models:
+ * - iaf_psc_exp: Leaky integrate-and-fire with exponential PSC
+ * - iaf_psc_alpha: Leaky integrate-and-fire with alpha PSC
+ * - iaf_psc_exp_g: Conductance-based IAF with exponential PSC
+ * - iaf_psc_exp_hc: IAF with homeostatic control
+ *
+ * Adaptive Exponential Models:
+ * - aeif_cond_alpha: Adaptive exponential with conductance-based alpha PSC
+ * - aeif_cond_beta: Adaptive exponential with conductance-based beta PSC
+ * - aeif_psc_exp: Adaptive exponential with current-based exponential PSC
+ * - aeif_psc_alpha: Adaptive exponential with current-based alpha PSC
+ * - aeif_psc_delta: Adaptive exponential with delta PSC
+ *
+ * Multisynapse Models:
+ * - aeif_cond_alpha_multisynapse: Multi-receptor adaptive exponential
+ * - aeif_cond_beta_multisynapse: Multi-receptor adaptive beta
+ * - aeif_psc_exp_multisynapse: Multi-receptor current-based
+ * - aeif_psc_alpha_multisynapse: Multi-receptor alpha current
+ *
+ * Izhikevich Models:
+ * - izhikevich: Simple spiking model
+ * - izhikevich_psc_exp: Izhikevich with exponential PSC
+ * - izhikevich_cond_beta: Izhikevich with conductance-based beta
+ * - izhikevich_psc_exp_2s: Two-compartment Izhikevich
+ * - izhikevich_psc_exp_5s: Five-compartment Izhikevich
+ *
+ * Special Models:
+ * - parrot_neuron: Repeat incoming spikes
+ * - ext_neuron: External neuron for hybrid simulations
+ * - poiss_gen: Poisson spike generator
+ * - spike_generator: Custom spike train generator
+ * - spike_detector: Spike recording device
+ *
+ * User-Defined Models:
+ * - user_m1: Template for user-defined model type 1
+ * - user_m2: Template for user-defined model type 2
+ * - Various user model variants with different synaptic dynamics
+ *
+ * NESTML-Generated Models:
+ * - ca_adex_alt_nestml: Calcium-based adaptive exponential
+ * - aeif_cond_alpha_neuron_nestml: NESTML-generated adaptive model
+ * - iaf_psc_exp_neuron_nestml: NESTML-generated IAF model
+ *
+ * Factory Pattern:
+ * ----------------
+ * The _Create() function implements the factory:
+ * - Takes model name as string input
+ * - Creates appropriate neuron instance
+ * - Sets default number of ports based on model
+ * - Returns NodeSeq handle for accessing neurons
+ *
+ * Model Registration:
+ * ------------------
+ * Each model is registered with:
+ * - Unique name string
+ * - Default number of ports
+ * - Parameter definitions
+ * - Variable definitions
+ * - Update and calibration functions
+ *
+ * Port Configuration:
+ * ------------------
+ * Different models have different port requirements:
+ * - Single receptor models: 1 port (e.g., iaf_psc_exp_g)
+ * - Excitatory/inhibitory: 2 ports (e.g., iaf_psc_exp)
+ * - Multisynapse: Variable ports (e.g., aeif_cond_alpha_multisynapse)
+ *
+ * Memory Management:
+ * -----------------
+ * - Neuron instances stored in node_vect_ vector
+ * - Each model manages its own GPU memory
+ * - Automatic cleanup on destruction
+ * - Efficient memory pooling for same-type neurons
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU::Create(): Public interface for model creation
+ * - BaseNeuron: Common interface for all models
+ * - Individual model headers: Specific implementations
+ * - CUDA kernels: GPU-side update functions
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Call Create(model_name, n_neurons, n_ports)
+ * 2. System creates appropriate neuron instance
+ * 3. Set neuron parameters
+ * 4. Connect neurons with synapses
+ * 5. Run simulation
+ *
+ * Error Handling:
+ * --------------
+ * - Invalid model names throw exceptions
+ * - Zero neuron count validation
+ * - Negative port count validation
+ * - Post-calibration creation prevention
+ *
+ * Performance Considerations:
+ * ---------------------------
+ * - Model creation is CPU-side operation
+ * - Batch creation of neurons efficient
+ * - Memory allocated once per neuron group
+ * - Minimal overhead during simulation
+ *
+ * Thread Safety:
+ * --------------
+ * - Model creation is not thread-safe
+ * - Multiple neuron groups can be created sequentially
+ * - Simulation updates are thread-safe on GPU
+ *
+ * Extension:
+ * ---------
+ * Adding new neuron models:
+ * 1. Create model class inheriting from BaseNeuron
+ * 2. Add model to neuron_model_names_ array
+ * 3. Update model enum values
+ * 4. Implement required virtual methods
+ * 5. Add Create() case for new model
+ *
+ * Scientific Background:
+ * ----------------------
+ * Models are based on published research:
+ * - IAF: Classic integrate-and-fire neuron
+ * - AdEx: Adaptive exponential (Brette & Gerstner, 2005)
+ * - Izhikevich: Simple model (Izhikevich, 2003)
+ * - PSC variations: Different synaptic dynamics
+ *
+ * @see neuron_models.h Model definitions and enums
+ * @see base_neuron.h Base neuron interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <config.h>
 #include <iostream>
 #include <string>
@@ -55,7 +202,7 @@
 #include "user_m1.h"
 #include "user_m2.h"
 // <<BEGIN_NESTML_GENERATED>>
-
+#include "ca_adex_alt_nestml.h"
 // <<END_NESTML_GENERATED>>
 NodeSeq
 NESTGPU::_Create( std::string model_name, uint n_nodes /*=1*/, int n_ports /*=1*/ )
@@ -213,8 +360,12 @@ NESTGPU::_Create( std::string model_name, uint n_nodes /*=1*/, int n_ports /*=1*
     node_vect_.push_back( izhikevich_psc_exp_group );
   }
   // <<BEGIN_NESTML_GENERATED>>
-
-  // <<END_NESTML_GENERATED>>
+else if (model_name == neuron_model_name[i_ca_adex_alt_nestml_model]) {
+    n_ports = 7;
+    ca_adex_alt_nestml *ca_adex_alt_nestml_group = new ca_adex_alt_nestml;
+    node_vect_.push_back(ca_adex_alt_nestml_group);
+ }
+// <<END_NESTML_GENERATED>>
   else
   {
     throw ngpu_exception( std::string( "Unknown neuron model name: " ) + model_name );

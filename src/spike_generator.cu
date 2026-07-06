@@ -20,6 +20,94 @@
  *
  */
 
+/**
+ * @file spike_generator.cu
+ * @brief Custom spike train generator for NEST GPU
+ *
+ * This file implements the spike generator, a device that produces
+ * spike trains with user-specified timing patterns. It's essential
+ * for creating structured input patterns and testing network responses.
+ *
+ * Functionality:
+ * --------------
+ * The spike generator emits spikes at specified times:
+ * - User-defined spike time arrays
+ * - Precise temporal control
+ * - Spike multiplicity support
+ * - Repeatable patterns
+ *
+ * Key Features:
+ * -------------
+ * - Custom spike timing arrays
+ * - Spike multiplicity control
+ * - Precise temporal resolution
+ * - Multiple independent generators
+ * - Pattern repeatability
+ *
+ * Applications:
+ * -------------
+ * - Structured input patterns
+ * - Network response testing
+ * - Temporal coding experiments
+ * - Benchmark stimulation
+ * - Precise experimental control
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel for parallel operation:
+ * - Each generator runs independently
+ * - Efficient spike timing comparison
+ * - Coalesced memory access patterns
+ * - Minimal CPU intervention
+ *
+ * Array Parameters:
+ * ----------------
+ * - spike_times: Array of spike times (ms)
+ * - spike_gen_mul: Spike multiplicity array
+ *
+ * Model Parameters:
+ * ----------------
+ * No scalar parameters (uses arrays only)
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Delivers spikes to target neurons
+ * - Spike buffer: Routes generated spikes
+ * - Recording: Can monitor output patterns
+ *
+ * Performance:
+ * ------------
+ * - Efficient for moderate spike counts
+ * - Minimal simulation overhead
+ * - GPU memory optimized
+ *
+ * Thread Safety:
+ * --------------
+ * - Each generator operates independently
+ * - Concurrent operation supported
+ * - Thread-safe spike emission
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create spike generator instance
+ * 2. Set spike_times array
+ * 3. Optionally set spike multiplicities
+ * 4. Connect to target neurons
+ * 5. Spikes emitted at specified times during simulation
+ *
+ * Scientific Background:
+ * ----------------------
+ * Spike generators are used for:
+ * - Reproducing experimental protocols
+ * - Testing network responses
+ * - Studying temporal processing
+ * - Pattern recognition tasks
+ * - Controlled stimulation studies
+ *
+ * @see spike_generator.h Spike generator interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <cmath>
 #include <config.h>
 #include <iostream>

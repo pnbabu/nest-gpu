@@ -20,6 +20,88 @@
  *
  */
 
+/**
+ * @file remote_spike.cu
+ * @brief Remote spike handling for distributed NEST GPU simulations
+ *
+ * This file manages spike communication between different MPI processes
+ * in distributed NEST GPU simulations, enabling scalable multi-node
+ * and multi-GPU neural network simulations.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The remote spike system:
+ * - Buffers spikes for remote destinations
+ * - Communicates spikes via MPI
+ * - Receives spikes from remote processes
+ * - Delivers remote spikes to local targets
+ * - Minimizes communication overhead
+ *
+ * Key Components:
+ * ---------------
+ * - Remote spike buffering: Collect spikes for remote hosts
+ * - MPI communication: Inter-process spike exchange
+ * - Remote spike delivery: Distribute received spikes
+ * - Spike multiplicity: Handle multiple spike copies
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA-accelerated spike handling:
+ * - Parallel spike collection
+ * - Efficient buffer management
+ * - Coalesced memory access
+ * - Atomic operations for consistency
+ *
+ * Communication Strategy:
+ * -----------------------
+ * 1. Collect spikes destined for remote processes
+ * 2. Compress and buffer spikes efficiently
+ * 3. Exchange spikes via MPI communication
+ * 4. Receive remote spikes and deliver locally
+ * 5. Maintain timing consistency across processes
+ *
+ * Integration Points:
+ * ------------------
+ * - Remote connect: Cross-process connectivity
+ * - MPI communication: Inter-process data exchange
+ * - Spike buffer: Local spike management
+ * - Send spike: Spike emission interface
+ *
+ * Performance:
+ * ------------
+ * - Minimized inter-process communication
+ * - Efficient spike buffering
+ * - Compressed spike data
+ * - Scalable to many processes
+ *
+ * Thread Safety:
+ * --------------
+ * - Atomic spike operations
+ * - Thread-safe buffers
+ * - Consistent communication
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Neurons emit spikes
+ * 2. Remote spikes identified
+ * 3. Buffered for MPI communication
+ * 4. Exchanged between processes
+ * 5. Delivered to local targets
+ *
+ * Scientific Background:
+ * ----------------------
+ * Distributed simulations enable:
+ * - Larger network sizes
+ * - Multi-GPU acceleration
+ * - Cluster computing
+ * - Supercomputer simulations
+ * - Brain-scale modeling
+ *
+ * @see remote_spike.h Remote spike interface
+ * @see mpi_comm.h MPI communication layer
+ * @see remote_connect.h Remote connectivity
+ */
+
 __constant__ bool have_remote_spike_mul;
 
 #include <config.h>

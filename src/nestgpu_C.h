@@ -421,6 +421,8 @@ extern "C"
    int *target_host_arr, int n_target_host, uint **target_arr, uint *n_target_arr,
    int indegree, int i_host_group );
 
+  bool reset_api();
+
   
 #ifdef __cplusplus
 }

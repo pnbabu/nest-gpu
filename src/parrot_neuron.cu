@@ -20,6 +20,83 @@
  *
  */
 
+/**
+ * @file parrot_neuron.cu
+ * @brief Parrot neuron implementation for spike repetition
+ *
+ * This file implements the parrot neuron, a special neuron model that
+ * repeats incoming spikes. It's primarily used for network routing and
+ * connectivity management in complex neural simulations.
+ *
+ * Functionality:
+ * --------------
+ * The parrot neuron acts as a spike repeater:
+ * - Receives spikes from input connections
+ * - Immediately emits identical spikes
+ * - Preserves spike timing
+ * - Can modify spike multiplicity
+ *
+ * Key Features:
+ * -------------
+ * - Spike-to-spike transformation
+ * - Configurable delay
+ * - Spike multiplicity control
+ * - Bidirectional spike communication
+ *
+ * Applications:
+ * -------------
+ * - Network routing and relay
+ * - Spike duplicator for multiple targets
+ * - Timing-preserving signal transmission
+ * - Network topology management
+ * - Hybrid simulations
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel for parallel operation:
+ * - Each parrot neuron handled by separate thread
+ * - Efficient spike detection and transmission
+ * - Minimal overhead
+ *
+ * State Variables:
+ * ----------------
+ * - input_spike_mul: Input spike multiplicity
+ * - dummy_input: Placeholder for compatibility
+ * - V: Dummy voltage variable
+ *
+ * Model Parameters:
+ * ----------------
+ * - hold_spike_mul: Spike retention multiplier
+ * - den_delay: Dendritic delay (ms)
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Receives input spikes
+ * - Spike buffer: Emits output spikes
+ * - Recording: Can monitor spike transmission
+ *
+ * Performance:
+ * ------------
+ * - Very fast (simple spike relay)
+ * - Minimal computational overhead
+ * - Efficient memory usage
+ *
+ * Thread Safety:
+ * --------------
+ * - Thread-safe spike handling
+ * - Concurrent operation supported
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create parrot neurons
+ * 2. Connect to spike sources
+ * 3. Connect to target neurons
+ * 4. Spikes automatically relayed during simulation
+ *
+ * @see parrot_neuron.h Parrot neuron interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <cmath>
 #include <config.h>
 #include <iostream>

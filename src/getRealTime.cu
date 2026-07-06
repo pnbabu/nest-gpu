@@ -27,6 +27,67 @@
  *          http://creativecommons.org/licenses/by/3.0/deed.en_US
  */
 
+/**
+ * @file getRealTime.cu
+ * @brief Cross-platform real-time clock implementation for NEST GPU
+ *
+ * This file provides a cross-platform implementation of a high-resolution
+ * real-time clock function for performance measurement and benchmarking
+ * in NEST GPU simulations.
+ *
+ * Functionality:
+ * --------------
+ * Returns real time in seconds with high precision:
+ * - Microsecond or nanosecond resolution (platform-dependent)
+ * - Cross-platform support (Windows, Unix, macOS)
+ * - Monotonic clock when available
+ * - Suitable for performance measurements
+ *
+ * Platform Support:
+ * ----------------
+ * Windows:
+ * - Uses QueryPerformanceCounter()
+ * - High-resolution performance counter
+ * - Microsecond precision
+ *
+ * Unix/Linux:
+ * - Uses clock_gettime() with CLOCK_MONOTONIC
+ * - High-resolution monotonic clock
+ * - Nanosecond precision
+ *
+ * macOS:
+ * - Uses mach_absolute_time()
+ * - High-resolution monotonic clock
+ * - Nanosecond precision
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU: Performance measurement
+ * - Benchmarking: Simulation timing
+ * - Profiling: Performance analysis
+ *
+ * Usage:
+ * ------
+ * double start_time = getRealTime();
+ * // ... code to measure ...
+ * double elapsed = getRealTime() - start_time;
+ *
+ * Performance:
+ * ------------
+ * - Minimal overhead
+ * - High precision timing
+ * - Fast clock access
+ *
+ * Applications:
+ * -------------
+ * - Simulation timing measurement
+ * - Performance profiling
+ * - Benchmarking
+ * - Load balancing analysis
+ *
+ * @see getRealTime.h Timing interface
+ */
+
 #if defined( _WIN32 )
 #include <Windows.h>
 #include <config.h>

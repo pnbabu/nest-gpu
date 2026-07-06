@@ -20,6 +20,95 @@
  *
  */
 
+/**
+ * @file spike_buffer.cu
+ * @brief Output spike buffering system for NEST GPU
+ *
+ * This file implements the output spike buffer that manages spikes emitted
+ * by neurons during simulation. It's a critical component for efficient
+ * spike delivery and network dynamics.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The output spike buffer implements a ring buffer system:
+ * - Circular buffer for efficient memory usage
+ * - Delay-based spike routing
+ * - Multi-buffer support for different neuron groups
+ * - Optimized for GPU access patterns
+ *
+ * Buffer Organization:
+ * -------------------
+ * Spike buffer structure:
+ * - Multiple independent buffers
+ * - Circular organization with wrap-around
+ * - Index-based access patterns
+ * - Guard values for overflow detection
+ *
+ * Key Components:
+ * ---------------
+ * - MaxSpikeBufferSize: Maximum spikes per buffer
+ * - NSpikeBuffer: Number of spike buffers
+ * - ExternalSpikeFlag: External spike injection flag
+ * - spike_array: GPU array for spike storage
+ * - ring buffer indexing for efficiency
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels manage spike buffering:
+ * - Parallel spike emission across neurons
+ * - Efficient buffer indexing
+ * - Coalesced memory writes
+ * - Atomic operations for consistency
+ *
+ * Spike Delivery Process:
+ * ----------------------
+ * 1. Neurons emit spikes at current time
+ * 2. Spikes placed in appropriate buffer slots
+ * 3. Buffer manages delay-based routing
+ * 4. Spikes delivered to target neurons
+ * 5. Buffer slots cycle for next timestep
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Connection information for routing
+ * - Input spike buffer: Receives buffered spikes
+ * - Send spike: Spike emission interface
+ * - Neuron models: Generate output spikes
+ *
+ * Performance Optimizations:
+ * ---------------------------
+ * - Circular buffer reduces allocation overhead
+ * - Coalesced memory access patterns
+ * - Efficient indexing calculations
+ * - Guard bits for safety
+ * - Minimized memory transfers
+ *
+ * Thread Safety:
+ * --------------
+ * - Atomic spike emission
+ * - Thread-safe buffer access
+ * - Concurrent spike generation
+ *
+ * Memory Management:
+ * -----------------
+ * - Pre-allocated buffer arrays
+ * - Efficient memory reuse
+ * - Minimal dynamic allocation
+ * - Optimized for GPU memory hierarchy
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Initialize buffers with network dimensions
+ * 2. During simulation, neurons emit spikes
+ * 3. System routes spikes through buffers
+ * 4. Spikes delivered based on delays
+ * 5. Buffers cycle for next iteration
+ *
+ * @see spike_buffer.h Buffer interface and classes
+ * @see input_spike_buffer.cu Input buffering
+ * @see send_spike.h Spike emission interface
+ */
+
 // #define OPTIMIZE_FOR_MEMORY
 
 #include <config.h>

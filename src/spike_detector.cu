@@ -20,6 +20,100 @@
  *
  */
 
+/**
+ * @file spike_detector.cu
+ * @brief Spike detection and recording device for NEST GPU
+ *
+ * This file implements the spike detector, a recording device that captures
+ * spike times from connected neurons. It's essential for analyzing network
+ * activity and validating simulation results.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The spike detector operates as a passive recording device:
+ * - Connects to source neurons
+ * - Records spike times with microsecond precision
+ * - Stores data in GPU memory for efficient access
+ * - Supports multiple recording strategies
+ *
+ * Recording Strategy:
+ * ------------------
+ * Spike detection and storage:
+ * 1. Monitor neuron activity each simulation step
+ * 2. Detect threshold crossings (spikes)
+ * 3. Record spike times with high temporal precision
+ * 4. Buffer data on GPU for efficiency
+ * 5. Transfer to host on demand
+ *
+ * Data Storage:
+ * -------------
+ * Spike data is stored in structured format:
+ * - Source neuron ID
+ * - Spike time (in simulation time units)
+ * - Spike sequence number
+ * - Optional additional metadata
+ *
+ * Memory Management:
+ * -----------------
+ * - Dynamic buffer allocation
+ * - Circular buffers for continuous recording
+ * - Configurable recording duration limits
+ * - Efficient GPU memory usage
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle spike detection:
+ * - Parallel monitoring of multiple neurons
+ * - Efficient spike time capture
+ * - Coalesced memory writes for storage
+ * - Minimal overhead on simulation speed
+ *
+ * Key Parameters:
+ * --------------
+ * - hold_spike_mul: Spike retention multiplier
+ * - input_spike_mul: Input spike counting
+ * - spike_mul: Spike multiplication factor
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Neurons connect to spike detector
+ * - Spike delivery system: Spikes routed to detector
+ * - Recording system: Data extraction and storage
+ * - Python interface: Data access for analysis
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create spike detector instance
+ * 2. Connect to target neurons
+ * 3. Configure recording parameters
+ * 4. Run simulation
+ * 5. Retrieve recorded spike data
+ *
+ * Performance:
+ * ------------
+ * - Minimal impact on simulation speed
+ * - Efficient GPU memory usage
+ * - Scalable to large neuron populations
+ * - Fast data retrieval
+ *
+ * Thread Safety:
+ * --------------
+ * - Recording is thread-safe on GPU
+ * - Multiple detectors can operate simultaneously
+ * - Data access requires synchronization
+ *
+ * Applications:
+ * -------------
+ * - Raster plots for spike timing visualization
+ * - Firing rate analysis
+ * - Network activity patterns
+ * - Cross-correlation analysis
+ * - Burst detection
+ *
+ * @see spike_detector.h Spike detector interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <cmath>
 #include <config.h>
 #include <iostream>

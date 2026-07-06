@@ -20,6 +20,61 @@
  *
  */
 
+/**
+ * @file nested_loop.cu
+ * @brief Nested loop utilities for GPU kernel operations in NEST GPU
+ *
+ * This file provides utilities for managing nested loop operations
+ * in GPU kernels, particularly for synapse plasticity updates and
+ * other complex iterative operations.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The nested loop system:
+ * - Manages thread block organization
+ * - Optimizes memory access patterns
+ * - Handles thread synchronization
+ * - Provides efficient loop structures
+ *
+ * Key Components:
+ * ---------------
+ * - Thread block size management
+ * - Nested loop pattern generation
+ * - Synapse update optimization
+ * - Memory coalescing utilities
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel organization:
+ * - THREADS_PER_BLOCK: Thread block size
+ * - ELEMENTS_PER_BLOCK: Elements processed per block
+ * - Efficient grid organization
+ * - Memory bank conflict avoidance
+ *
+ * Applications:
+ * -------------
+ * - STDP synapse updates
+ * - Synaptic weight modifications
+ * - Plasticity rule computation
+ * - Multi-iteration operations
+ *
+ * Integration Points:
+ * ------------------
+ * - Syn_model: Plasticity updates
+ * - STDP: Weight modification
+ * - Neuron models: Complex dynamics
+ *
+ * Performance:
+ * ------------
+ * - Optimized thread organization
+ * - Efficient memory access
+ * - Minimal synchronization overhead
+ * - Scalable to large arrays
+ *
+ * @see nested_loop.h Loop interface and utilities
+ * @see syn_model.h Plasticity updates
+ */
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>

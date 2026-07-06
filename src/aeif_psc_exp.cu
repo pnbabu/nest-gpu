@@ -20,6 +20,75 @@
  *
  */
 
+/**
+ * @file aeif_psc_exp.cu
+ * @brief Adaptive exponential integrate-and-fire neuron with current-based exponential synapses
+ *
+ * This file implements the aeif_psc_exp neuron model, which combines
+ * exponential integrate-and-fire dynamics with an adaptation current and
+ * current-based synaptic inputs with exponential postsynaptic currents.
+ *
+ * Mathematical Model:
+ * -------------------
+ * The aeif_psc_exp model extends the standard integrate-and-fire neuron:
+ *
+ * Membrane potential dynamics:
+ * \[ C_m \frac{dV}{dt} = -g_L(V-E_L) + g_L \Delta_T \exp\left(\frac{V-V_{th}}{\Delta_T}\right) - w + I_{syn} + I_e \]
+ *
+ * Adaptation current dynamics:
+ * \[ \tau_w \frac{dw}{dt} = a(V-E_L) - w \]
+ *
+ * Synaptic current dynamics (exponential PSC):
+ * \[ \tau_{ex} \frac{dI_{ex}}{dt} = -I_{ex} \]
+ * \[ \tau_{in} \frac{dI_{in}}{dt} = -I_{in} \]
+ *
+ * Key Features:
+ * -------------
+ * - Exponential approach to spike threshold
+ * - Spike-triggered adaptation current
+ * - Current-based synaptic inputs
+ * - Exponential postsynaptic currents
+ * - Refractory period support
+ *
+ * GPU Implementation:
+ * ------------------
+ * - RK5 (Runge-Kutta 5th order) integration
+ * - Parallel updates across neuron populations
+ * - Efficient memory access patterns
+ * - Spike detection on GPU
+ *
+ * Integration Method:
+ * ------------------
+ * Uses RK5 for accurate numerical integration:
+ * - Adaptive stepsize control
+ * - High accuracy for stiff equations
+ * - Stable for physiological parameters
+ *
+ * Model Parameters:
+ * ----------------
+ * - C_m: Membrane capacitance (pF)
+ * - g_L: Membrane conductance (nS)
+ * - E_L: Resting potential (mV)
+ * - V_th: Spike threshold (mV)
+ * - Delta_T: Slope factor (mV)
+ * - a: Adaptation coupling
+ * - b: Spike-triggered adaptation
+ * - tau_w: Adaptation time constant (ms)
+ * - V_reset: Reset potential (mV)
+ * - t_ref: Refractory period (ms)
+ * - tau_ex/in: Synaptic time constants (ms)
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Synaptic inputs via currents
+ * - Spike buffer: Output spike delivery
+ * - Recording: Multimeter compatibility
+ *
+ * @see aeif_psc_exp.h Model interface
+ * @see aeif_psc_exp_kernel.h GPU kernels
+ * @see rk5.h Integration method
+ */
+
 #include "aeif_psc_exp.h"
 #include "aeif_psc_exp_kernel.h"
 #include "rk5.h"

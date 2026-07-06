@@ -20,6 +20,92 @@
  *
  */
 
+/**
+ * @file syn_model.cu
+ * @brief Synaptic model framework and management for NEST GPU
+ *
+ * This file implements a flexible framework for managing different types of
+ * synaptic models in NEST GPU, including static synapses and various forms
+ * of plasticity (STDP, neuromodulation, etc.).
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The synaptic model system provides:
+ * - Abstract base class for all synapse types
+ * - Parameter management for each synapse
+ * - GPU-side synapse state updates
+ * - Flexible plasticity rules
+ * - Efficient memory organization
+ *
+ * Supported Synapse Types:
+ * ------------------------
+ * Static synapses:
+ * - Fixed weights throughout simulation
+ * - Basic synaptic transmission
+ *
+ * Plastic synapses:
+ * - STDP (Spike-Timing-Dependent Plasticity)
+ * - Neuromodulated plasticity
+ * - Short-term plasticity
+ * - User-defined plasticity rules
+ *
+ * Synapse Organization:
+ * ---------------------
+ * Synapses are organized by groups:
+ * - Each synapse group has specific model
+ * - Group-specific parameters
+ * - Efficient indexing system
+ * - GPU memory optimization
+ *
+ * Key Components:
+ * ---------------
+ * - SynModel: Base class for synaptic models
+ * - SynGroupTypeMap: Maps synapse groups to model types
+ * - SynGroupParamMap: Maps synapse groups to parameters
+ * - SynGroupInit: Initialize synapse groups on GPU
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle synaptic updates:
+ * - Parallel weight updates across synapses
+ * - Efficient parameter access
+ * - Coalesced memory operations
+ * - Minimal thread divergence
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Synapse creation and assignment
+ * - STDP: Plastic synapse management
+ * - Neuron models: Synaptic input delivery
+ * - Simulation loop: Synaptic updates
+ *
+ * Performance:
+ * ------------
+ * - Optimized memory layout
+ * - Efficient parameter access
+ * - Minimal overhead for static synapses
+ * - Scalable plasticity updates
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Define synapse type and parameters
+ * 2. Create connections with specified synapse model
+ * 3. System assigns synapse to appropriate group
+ * 4. During simulation, synapses update accordingly
+ *
+ * Scientific Background:
+ * ----------------------
+ * Synaptic models are based on:
+ * - Static synapses: Basic transmission
+ * - STDP: Timing-based learning
+ * - Neuromodulation: Global gating signals
+ * - Short-term plasticity: Facilitation/depression
+ *
+ * @see syn_model.h Synaptic model interface
+ * @see stdp.h STDP implementation
+ * @see connect.h Connection management
+ */
+
 #include "cuda_error.h"
 #include "nestgpu.h"
 #include "ngpu_exception.h"

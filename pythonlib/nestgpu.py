@@ -1,4 +1,85 @@
-""" Python interface for NESTGPU"""
+"""
+Python interface for NEST GPU - GPU-accelerated spiking neural network simulator.
+
+This module provides a Python interface to the NEST GPU library, enabling
+efficient simulation of large-scale spiking neural networks on NVIDIA GPUs.
+
+The interface is designed to be compatible with the NEST simulator API while
+optimizing performance through GPU acceleration and efficient memory management.
+
+Main Classes:
+    - ConnectionList: List of connection IDs for bulk operations
+    - NodeSeq: Sequence of neuron indices for efficient indexing
+    - RemoteNodeSeq: Node sequence on remote MPI hosts
+    - SynGroup: Synapse group identifier
+
+Key Functions:
+    Network Creation:
+        - CreateNodes: Create neurons of specified models
+        - CreatePoissonGenerator: Create Poisson spike generators
+        - CreateSpikeGenerator: Create deterministic spike generators
+
+    Network Configuration:
+        - SetRandomSeed: Set random seed for reproducibility
+        - SetTimeResolution: Set simulation timestep
+        - SetMaxSpikeBufferSize: Configure spike buffer size
+
+    Connection Management:
+        - Connect: Connect neurons with various rules
+        - SetConnections: Set connections from arrays
+
+    Simulation Control:
+        - Calibrate: Prepare network for simulation
+        - Simulate: Run network simulation
+        - Update: Update neuron states (alternative to Simulate)
+
+    Data Access:
+        - GetNeuronParam: Read neuron parameters
+        - SetNeuronParam: Set neuron parameters
+        - GetConnections: Get connection information
+        - GetRecordData: Retrieve recorded data
+
+Example:
+    >>> import nestgpu
+    >>> # Set simulation parameters
+    >>> nestgpu.SetRandomSeed(12345)
+    >>> nestgpu.SetTimeResolution(0.1)
+    >>> # Create network
+    >>> neurons = nestgpu.CreateNodes("iaf_psc_exp", 1000)
+    >>> # Connect neurons
+    >>> nestgpu.Connect(neurons, neurons, {"rule": "fixed_indegree", "indegree": 100},
+    ...                 {"weight": 1.0, "delay": 1.0})
+    >>> # Calibrate and simulate
+    >>> nestgpu.Calibrate()
+    >>> nestgpu.Simulate(1000.0)  # Simulate 1 second
+
+MPI Support:
+    The module supports distributed simulations across multiple MPI processes.
+    See ConnectMpiInit() and related functions for multi-GPU setups.
+
+Performance Notes:
+    - Optimized for networks with >1000 neurons
+    - GPU acceleration for large-scale networks
+    - Efficient memory management for spike communication
+    - Near-linear scaling with network size
+
+Compatibility:
+    - Compatible with NEST simulator API where possible
+    - Similar parameter naming and structure
+    - Compatible with common neuron and synapse models
+
+Author:
+    NEST Initiative
+
+Copyright:
+    Copyright (C) 2021 The NEST Initiative
+
+License:
+    GPL-2.0 license
+
+Homepage:
+    https://github.com/nest/nest-gpu
+"""
 import sys, platform
 import ctypes, ctypes.util
 import os
@@ -27,25 +108,149 @@ c_float_pp = ctypes.POINTER(ctypes.POINTER(ctypes.c_float))
 c_float_ppp = ctypes.POINTER(ctypes.POINTER(ctypes.POINTER(ctypes.c_float)))
 
 class ConnectionList(object):
+    """
+    Represents a list of connection identifiers for bulk operations.
+
+    This class wraps a list or tuple of connection IDs, enabling efficient
+    batch operations on connections. It provides slicing and indexing
+    capabilities while maintaining the connection list structure.
+
+    Attributes:
+        conn_list (list/tuple): Underlying list of connection identifiers
+
+    Usage:
+        >>> conn_list = ConnectionList([1, 2, 3, 4, 5])
+        >>> subset = conn_list[1:3]  # ConnectionList([2, 3])
+        >>> single = conn_list[2]     # ConnectionList([3])
+        >>> ids = conn_list.ToList()  # [1, 2, 3, 4, 5]
+
+    Methods:
+        ToList: Convert to Python list
+        __getitem__: Index or slice the connection list
+        __len__: Get number of connections
+
+    Note:
+        This class is used primarily for efficient bulk connection operations
+        and maintaining type consistency in the API.
+    """
+
     def __init__(self, conn_list):
+        """
+        Initialize a ConnectionList from a list or tuple.
+
+        Args:
+            conn_list (list/tuple): List of connection identifiers
+
+        Raises:
+            ValueError: If conn_list is not a list or tuple
+
+        Example:
+            >>> conn_ids = [1001, 1002, 1003]
+            >>> conn_list = ConnectionList(conn_ids)
+        """
         if (type(conn_list)!=list) & (type(conn_list)!=tuple):
             raise ValueError("ConnectionList object can be initialized only"
                              " with a list or a tuple of connection indexes")
         self.conn_list = conn_list
+
     def __getitem__(self, i):
+        """
+        Get a subset or single element from the connection list.
+
+        Args:
+            i (int or slice): Index or slice
+
+        Returns:
+            ConnectionList: Subset of connections as a new ConnectionList
+
+        Raises:
+            ValueError: If index type is invalid
+
+        Example:
+            >>> conn_list = ConnectionList([1, 2, 3, 4, 5])
+            >>> subset = conn_list[1:3]  # ConnectionList([2, 3])
+            >>> single = conn_list[2]    # ConnectionList([3])
+        """
         if type(i)==slice:
             return ConnectionList(self.conn_list[i])
         elif type(i)==int:
             return ConnectionList([self.conn_list[i]])
         else:
             raise ValueError("ConnectionList index error")
+
     def __len__(self):
+        """
+        Get the number of connections in the list.
+
+        Returns:
+            int: Number of connections
+
+        Example:
+            >>> conn_list = ConnectionList([1, 2, 3])
+            >>> len(conn_list)  # 3
+        """
         return len(self.conn_list)
+
     def ToList(self):
+        """
+        Convert the ConnectionList to a Python list.
+
+        Returns:
+            list: Underlying list of connection identifiers
+
+        Example:
+            >>> conn_list = ConnectionList([1, 2, 3])
+            >>> conn_list.ToList()  # [1, 2, 3]
+        """
         return self.conn_list
 
 class NodeSeq(object):
+    """
+    Represents a contiguous sequence of neuron indices.
+
+    NodeSeq is used throughout NEST GPU to efficiently represent sequences
+    of neuron indices without storing the full sequence in memory. It
+    represents the range [i0, i0+1, ..., i0+n-1] with just two parameters.
+
+    This is memory-efficient for large networks and enables fast slicing
+    and indexing operations.
+
+    Attributes:
+        i0 (int): Starting index of the sequence
+        n (int): Number of elements in the sequence
+
+    Usage:
+        >>> nodes = NodeSeq(100, 50)  # Represents neurons 100-149
+        >>> subset = nodes[10:20]     # Represents neurons 110-119
+        >>> single_neuron = nodes[5]  # Returns 105
+        >>> all_nodes = nodes.ToList()  # Returns [100, 101, ..., 149]
+
+    Methods:
+        Subseq: Create a subsequence from range
+        ToList: Convert to Python list
+        __getitem__: Index or slice the sequence
+        __len__: Get sequence length
+
+    Note:
+        This class is returned by Create() and similar functions to
+        efficiently represent created neurons.
+    """
+
     def __init__(self, i0, n=1):
+        """
+        Initialize a NodeSeq representing a contiguous range of indices.
+
+        Args:
+            i0 (int): Starting index (first element)
+            n (int): Number of elements in sequence (default: 1)
+
+        Note:
+            If i0 is None, creates an empty sequence (i0=0, n=0).
+
+        Example:
+            >>> seq = NodeSeq(100, 50)  # Sequence [100, 101, ..., 149]
+            >>> empty_seq = NodeSeq(None)  # Empty sequence
+        """
         if i0 == None:
             i0 = 0
             n = 0 # -1
@@ -53,6 +258,23 @@ class NodeSeq(object):
         self.n = n
 
     def Subseq(self, first, last):
+        """
+        Create a subsequence from a range of indices.
+
+        Args:
+            first (int): First index in subsequence (inclusive)
+            last (int): Last index in subsequence (inclusive)
+
+        Returns:
+            NodeSeq: New NodeSeq representing the subsequence
+
+        Raises:
+            ValueError: If range is invalid or out of bounds
+
+        Example:
+            >>> nodes = NodeSeq(100, 50)  # [100, ..., 149]
+            >>> subset = nodes.Subseq(10, 20)  # [110, ..., 130]
+        """
         if last<0 and last>=-self.n:
             last = last%self.n
         if first<0 | last<first:
@@ -60,12 +282,30 @@ class NodeSeq(object):
         if last>=self.n:
             raise ValueError("Sequence subset out of range")
         return NodeSeq(self.i0 + first, last - first + 1)
+
     def __getitem__(self, i):
+        """
+        Index or slice the NodeSeq.
+
+        Args:
+            i (int or slice): Index or slice
+
+        Returns:
+            int or NodeSeq: Single index if i is int, new NodeSeq if slice
+
+        Raises:
+            ValueError: If index out of bounds or slice has step
+
+        Example:
+            >>> nodes = NodeSeq(100, 50)
+            >>> nodes[5]  # Returns 105
+            >>> nodes[10:20]  # Returns NodeSeq(110, 10)
+        """
         if type(i)==slice:
             if i.step != None:
                 raise ValueError("Subsequence cannot have a step")
             return self.Subseq(i.start, i.stop-1)
- 
+
         if i<-self.n:
             raise ValueError("Sequence index error")
         if i>=self.n:
@@ -73,41 +313,188 @@ class NodeSeq(object):
         if i<0:
             i = i%self.n
         return self.i0 + i
+
     def ToList(self):
+        """
+        Convert the NodeSeq to a Python list of integers.
+
+        Returns:
+            list: List containing all indices in the sequence
+
+        Example:
+            >>> nodes = NodeSeq(100, 3)
+            >>> nodes.ToList()  # Returns [100, 101, 102]
+
+        Note:
+            This materializes the sequence, which uses O(n) memory.
+            Prefer using NodeSeq directly when possible.
+        """
         return list(range(self.i0, self.i0 + self.n))
+
     def __len__(self):
+        """
+        Get the number of elements in the sequence.
+
+        Returns:
+            int: Number of elements
+
+        Example:
+            >>> nodes = NodeSeq(100, 50)
+            >>> len(nodes)  # Returns 50
+        """
         return self.n
 
 class RemoteNodeSeq(object):
+    """
+    Represents a sequence of neurons on a remote MPI host.
+
+    RemoteNodeSeq extends NodeSeq to include host information for
+    distributed simulations across multiple MPI processes. This enables
+    creating and connecting neurons on different hosts in multi-GPU
+    and multi-node simulations.
+
+    Attributes:
+        i_host (int): Index of the remote MPI host (0-based)
+        node_seq (NodeSeq): Sequence of node indices on the remote host
+
+    Usage:
+        >>> # Create 1000 neurons on host 2
+        >>> remote_nodes = RemoteNodeSeq(i_host=2, node_seq=NodeSeq(0, 1000))
+        >>> # Connect local neurons to remote neurons
+        >>> nestgpu.Connect(local_nodes, remote_nodes, conn_spec, syn_spec)
+
+    Note:
+        Requires MPI initialization. See ConnectMpiInit() for setup.
+
+    See Also:
+        NodeSeq: Local node sequence representation
+    """
+
     def __init__(self, i_host=0, node_seq=NodeSeq(None)):
+        """
+        Initialize a RemoteNodeSeq.
+
+        Args:
+            i_host (int): Index of the remote host (default: 0)
+            node_seq (NodeSeq): Node sequence on the remote host
+
+        Example:
+            >>> # Create representation of 100 neurons on host 1
+            >>> remote_seq = RemoteNodeSeq(i_host=1, node_seq=NodeSeq(0, 100))
+        """
         self.i_host = i_host
         self.node_seq = node_seq
 
 class SynGroup(object):
+    """
+    Represents a synapse group identifier.
+
+    SynGroup is used to identify and manage groups of synapses with the
+    same model and parameters. Synapses can be organized into groups for
+    efficient bulk operations and parameter management.
+
+    Attributes:
+        i_syn_group (int): Index identifying the synapse group
+
+    Usage:
+        >>> # Create a synapse group
+        >>> syn_group = SynGroup(0)
+        >>> # Use in connection operations
+        >>> nestgpu.SetConnections(syn_group, weight, delay)
+
+    Note:
+        Synapse groups are created internally by the system based on
+        synapse models and parameters.
+    """
+
     def __init__(self, i_syn_group):
+        """
+        Initialize a SynGroup identifier.
+
+        Args:
+            i_syn_group (int): Index of the synapse group
+
+        Example:
+            >>> syn_id = SynGroup(0)  # First synapse group
+        """
         self.i_syn_group = i_syn_group
 
+"""
+Distribution types for parameter randomization.
+
+This dictionary maps distribution names to their integer codes, used when
+setting random distributions for neuron or connection parameters.
+
+Available Distributions:
+    - "none": No randomization (fixed values)
+    - "array": Values from an array
+    - "normal": Normal (Gaussian) distribution
+    - "normal_clipped": Normal distribution with clipping to a range
+
+Usage:
+    >>> nestgpu.SetNeuronParamDistr(neurons, "V_m", "normal", mean=-70.0, std=5.0)
+"""
 distribution_dict = {
-    "none": 0,
-    "array": 1,
-    "normal": 2,
-    "normal_clipped": 3
+    "none": 0,              # Fixed values (no randomization)
+    "array": 1,            # Values from provided array
+    "normal": 2,           # Normal (Gaussian) distribution
+    "normal_clipped": 3    # Normal distribution with clipping
 }
 
+"""
+Nested loop algorithm options for connection operations.
+
+These algorithms define different strategies for implementing nested
+loop operations in connection creation and other operations. The choice
+can significantly impact performance depending on network structure.
+
+Available Algorithms:
+    - BlockStep: Block-wise stepping algorithm
+    - CumulSum: Cumulative sum based algorithm
+    - Simple: Simple nested loop implementation
+    - ParallelInner: Parallel inner loop
+    - ParallelOuter: Parallel outer loop
+    - Frame1D: 1D frame-based algorithm
+    - Frame2D: 2D frame-based algorithm
+    - Smart1D: Smart 1D optimization
+    - Smart2D: Smart 2D optimization
+
+Usage:
+    >>> nestgpu.SetNestedLoopAlgo(NestedLoopAlgo.CumulSum)
+
+Note:
+    The optimal algorithm depends on network structure and GPU architecture.
+    Performance testing is recommended for large networks.
+"""
 # the following must match the enum NestedLoopAlgo in nested_loop.h
 class NestedLoopAlgo:
-  BlockStep = 0
-  CumulSum = 1
-  Simple = 2
-  ParallelInner = 3
-  ParallelOuter = 4
-  Frame1D = 5
-  Frame2D = 6
-  Smart1D = 7
-  Smart2D = 8
+  BlockStep = 0        # Block-wise stepping
+  CumulSum = 1        # Cumulative sum based
+  Simple = 2          # Simple implementation
+  ParallelInner = 3   # Parallel inner loop
+  ParallelOuter = 4   # Parallel outer loop
+  Frame1D = 5         # 1D frame-based
+  Frame2D = 6         # 2D frame-based
+  Smart1D = 7         # Smart 1D optimization
+  Smart2D = 8         # Smart 2D optimization
 
         
 def to_byte_str(s):
+    """
+    Convert a string to bytes for C library interface.
+
+    Args:
+        s (str or bytes): Input string
+
+    Returns:
+        bytes: Byte representation of the string
+
+    Raises:
+        ValueError: If input cannot be converted to string
+
+    Note:
+        Used internally for C library compatibility.
+    """
     if type(s)==str:
         return s.encode('ascii')
     elif type(s)==bytes:
@@ -116,37 +503,116 @@ def to_byte_str(s):
         raise ValueError("Variable cannot be converted to string")
 
 def to_def_str(s):
+    """
+    Convert bytes to default string representation.
+
+    Args:
+        s (bytes): Input bytes
+
+    Returns:
+        str: Decoded string
+
+    Note:
+        Used internally for C library compatibility across Python versions.
+    """
     if (sys.version_info >= (3, 0)):
         return s.decode("utf-8")
     else:
         return s
 
 def waitenter(val):
+    """
+    Wait for user input (cross-platform compatibility).
+
+    Args:
+        val (str): Prompt string
+
+    Returns:
+        str: User input
+
+    Note:
+        Provides compatibility between Python 2 and 3 input functions.
+    """
     if (sys.version_info >= (3, 0)):
         return input(val)
     else:
         return raw_input(val)
     
+"""
+Connection rule names supported by NEST GPU.
+
+These are the available connectivity rules for creating connections between
+neurons. They can be used with the Connect() function.
+
+Available Rules:
+    - "one_to_one": One-to-one connections (paired)
+    - "all_to_all": All-to-all connections (complete bipartite)
+    - "fixed_total_number": Fixed total number of connections
+    - "fixed_indegree": Fixed number of incoming connections per target
+    - "fixed_outdegree": Fixed number of outgoing connections per source
+
+Usage:
+    >>> nestgpu.Connect(source, target, {"rule": "fixed_indegree", "indegree": 100},
+    ...                 {"weight": 1.0, "delay": 1.0})
+"""
 conn_rule_name = ("one_to_one", "all_to_all", "fixed_total_number",
                   "fixed_indegree", "fixed_outdegree")
     
 NESTGPU_GetErrorMessage = _nestgpu.NESTGPU_GetErrorMessage
 NESTGPU_GetErrorMessage.restype = ctypes.POINTER(ctypes.c_char)
 def GetErrorMessage():
-    "Get error message from NESTGPU exception"
+    """
+    Get the error message from the last NESTGPU exception.
+
+    Returns:
+        str: Error message describing the last error
+
+    Example:
+        >>> try:
+        ...     nestgpu.CreateNodes("invalid_model", 10)
+        ... except ValueError as e:
+        ...     print(f"Error: {nestgpu.GetErrorMessage()}")
+    """
     message = ctypes.cast(NESTGPU_GetErrorMessage(), ctypes.c_char_p).value
     return message
- 
+
 NESTGPU_GetErrorCode = _nestgpu.NESTGPU_GetErrorCode
 NESTGPU_GetErrorCode.restype = ctypes.c_ubyte
 def GetErrorCode():
-    "Get error code from NESTGPU exception"
+    """
+    Get the error code from the last NESTGPU exception.
+
+    Returns:
+        int: Error code from the last error (0 if no error)
+
+    Example:
+        >>> if nestgpu.GetErrorCode() != 0:
+        ...     print(f"Error code: {nestgpu.GetErrorCode()}")
+        ...     print(f"Message: {nestgpu.GetErrorMessage()}")
+    """
     return NESTGPU_GetErrorCode()
- 
+
 NESTGPU_SetOnException = _nestgpu.NESTGPU_SetOnException
 NESTGPU_SetOnException.argtypes = (ctypes.c_int,)
 def SetOnException(on_exception):
-    "Define whether handle exceptions (1) or exit (0) in case of errors"
+    """
+    Set exception handling behavior.
+
+    Args:
+        on_exception (int): 0 to exit on error, 1 to handle exceptions
+
+    Returns:
+        int: Status code (0 on success)
+
+    Example:
+        >>> # Enable exception handling (default)
+        >>> nestgpu.SetOnException(1)
+        >>> # Disable exception handling (exit on error)
+        >>> nestgpu.SetOnException(0)
+
+    Note:
+        Default is 1 (handle exceptions by raising ValueError).
+    """
     return NESTGPU_SetOnException(ctypes.c_int(on_exception))
 
 SetOnException(1)
@@ -155,7 +621,37 @@ NESTGPU_SetRandomSeed = _nestgpu.NESTGPU_SetRandomSeed
 NESTGPU_SetRandomSeed.argtypes = (ctypes.c_ulonglong,)
 NESTGPU_SetRandomSeed.restype = ctypes.c_int
 def SetRandomSeed(seed):
-    "Set seed for random number generation"
+    """
+    Set the random seed for all stochastic processes.
+
+    Args:
+        seed (int): Random seed value (unsigned long long)
+
+    Returns:
+        int: Status code (0 on success)
+
+    Raises:
+        ValueError: If operation fails
+
+    This sets the seed for all random number generation including:
+        - Poisson spike generation
+        - Random connection patterns
+        - Parameter randomization
+        - Neuron model stochasticity
+
+    Example:
+        >>> # Set seed for reproducible simulation
+        >>> nestgpu.SetRandomSeed(12345)
+        >>> neurons = nestgpu.CreateNodes("iaf_psc_exp", 100)
+        >>> # Same seed will produce identical results
+
+    Note:
+        Should be called before network creation for reproducibility.
+        Different seeds will produce different network patterns.
+
+    See Also:
+        GetRandomSeed: Get current random seed
+    """
     ret = NESTGPU_SetRandomSeed(ctypes.c_ulonglong(seed))
     if GetErrorCode() != 0:
         raise ValueError(GetErrorMessage())
@@ -166,7 +662,42 @@ NESTGPU_SetTimeResolution = _nestgpu.NESTGPU_SetTimeResolution
 NESTGPU_SetTimeResolution.argtypes = (ctypes.c_float,)
 NESTGPU_SetTimeResolution.restype = ctypes.c_int
 def SetTimeResolution(time_res):
-    "Set time resolution in ms"
+    """
+    Set the simulation time resolution (timestep).
+
+    Args:
+        time_res (float): Time resolution in milliseconds
+
+    Returns:
+        int: Status code (0 on success)
+
+    Raises:
+        ValueError: If operation fails
+
+    The time resolution determines the integration timestep for the simulation.
+    Smaller values provide better accuracy but slower performance.
+
+    Typical Values:
+        - 0.1 ms: High accuracy, slower
+        - 1.0 ms: Standard accuracy
+        - 0.01 ms: Very high accuracy, much slower
+
+    Considerations:
+        - Should be smaller than the smallest synaptic delay
+        - Affects numerical stability of differential equation integration
+        - Impacts memory usage for spike recording
+
+    Example:
+        >>> nestgpu.SetTimeResolution(0.1)  # 0.1 ms timestep
+
+    Note:
+        Must be called before Calibrate().
+        Cannot be changed after simulation starts.
+
+    See Also:
+        GetTimeResolution: Get current time resolution
+        Calibrate: Prepare network for simulation
+    """
     ret = NESTGPU_SetTimeResolution(ctypes.c_float(time_res))
     if GetErrorCode() != 0:
         raise ValueError(GetErrorMessage())
@@ -175,7 +706,19 @@ def SetTimeResolution(time_res):
 NESTGPU_GetTimeResolution = _nestgpu.NESTGPU_GetTimeResolution
 NESTGPU_GetTimeResolution.restype = ctypes.c_float
 def GetTimeResolution():
-    "Get time resolution in ms"
+    """
+    Get the current simulation time resolution.
+
+    Returns:
+        float: Time resolution in milliseconds
+
+    Example:
+        >>> time_res = nestgpu.GetTimeResolution()
+        >>> print(f"Simulation timestep: {time_res} ms")
+
+    See Also:
+        SetTimeResolution: Set the time resolution
+    """
     ret = NESTGPU_GetTimeResolution()
     if GetErrorCode() != 0:
         raise ValueError(GetErrorMessage())
@@ -3321,3 +3864,11 @@ def ConnectDistributedFixedIndegree(source_host_list, source_group_list, target_
     gc.enable()
     return ret
 
+_nestgpu.reset_api.restype = ctypes.c_bool
+
+def reset_api() -> None:
+    res = _nestgpu.reset_api()
+    if GetErrorCode() != 0:
+        raise ValueError(GetErrorMessage())
+    if not res:
+        raise ValueError("is false")

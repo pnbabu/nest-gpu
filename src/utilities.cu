@@ -20,6 +20,48 @@
  *
  */
 
+/**
+ * @file utilities.cu
+ * @brief Utility functions and helper routines for NEST GPU
+ *
+ * This file provides various utility functions used throughout the
+ * NEST GPU codebase, including mathematical operations, string parsing,
+ * and helper functions for GPU operations.
+ *
+ * Mathematical Utilities:
+ * ----------------------
+ * - IntPow(): Integer exponentiation
+ * - RoundUpDiv(): Division with ceiling for array indexing
+ * - Various numerical helper functions
+ *
+ * String Utilities:
+ * ----------------
+ * - Trim(): Remove whitespace from strings
+ * - ParseParam(): Parse parameter strings
+ * - SplitString(): Break strings into components
+ *
+ * GPU Utilities:
+ * --------------
+ * - Device property queries
+ * - Memory calculation helpers
+ * - Grid/block size calculations
+ * - Error checking wrappers
+ *
+ * Performance Utilities:
+ * ----------------------
+ * - Timer functions for benchmarking
+ * - Memory usage tracking
+ * - Performance counter access
+ *
+ * Integration Points:
+ * ------------------
+ * - Used throughout NEST GPU codebase
+ * - Provides common functionality
+ * - Reduces code duplication
+ *
+ * @see utilities.h Utility function declarations
+ */
+
 int64_t
 IntPow( int64_t x, unsigned int p )
 {

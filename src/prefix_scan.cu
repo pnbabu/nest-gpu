@@ -20,6 +20,92 @@
  *
  */
 
+/**
+ * @file prefix_scan.cu
+ * @brief GPU-accelerated prefix scan (parallel prefix sum) operations
+ *
+ * This file implements efficient prefix scan operations on GPU, which
+ * are fundamental parallel primitives used throughout NEST GPU for
+ * various computational tasks.
+ *
+ * Algorithm Overview:
+ * ------------------
+ * Prefix scan (also called parallel prefix sum) computes cumulative sums:
+ * Input:  [x0, x1, x2, x3, ...]
+ * Output: [x0, x0+x1, x0+x1+x2, x0+x1+x2+x3, ...]
+ *
+ * This is a fundamental parallel primitive with many applications.
+ *
+ * Implementation Details:
+ * ----------------------
+ * Uses work-efficient scan algorithm:
+ * - Two-phase approach (upsweep, downsweep)
+ * - O(n log n) work complexity
+ * - O(log n) depth
+ * - Optimized memory access patterns
+ *
+ * Key Features:
+ * -------------
+ * - Inclusive and exclusive scan variants
+ * - Support for arbitrary array sizes
+ * - Efficient memory bandwidth usage
+ * - Coalesced global memory access
+ * - Shared memory optimization
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel implementation:
+ * - Block-based decomposition
+ * - Hierarchical scan (within blocks, then across blocks)
+ * - Efficient use of shared memory
+ * - Minimized bank conflicts
+ *
+ * Memory Management:
+ * -----------------
+ * - Pre-allocated temporary storage
+ * - Efficient memory pooling
+ * - Minimal allocation overhead
+ * - Reusable buffers
+ *
+ * Applications in NEST GPU:
+ * ------------------------
+ * - Spike counting and indexing
+ * - Connection creation and sorting
+ * - Array compaction operations
+ * - Parallel prefix operations
+ * - Data structure transformations
+ *
+ * Performance:
+ * ------------
+ * - Near-optimal memory bandwidth utilization
+ * - Scales with GPU core count
+ * - Efficient for large arrays
+ * - Minimal synchronization overhead
+ *
+ * Integration Points:
+ * ------------------
+ * - Connection system: Spike delivery indexing
+ * - Spike buffers: Spike count accumulation
+ * - Data structures: Array operations
+ * - Sorting algorithms: Helper operations
+ *
+ * Thread Safety:
+ * --------------
+ * - Each scan operation is independent
+ * - Multiple scans can run concurrently
+ * - Thread-safe implementation
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Initialize PrefixScan object
+ * 2. Call Scan() with input/output arrays
+ * 3. Result returned in output array
+ * 4. Cleanup with Free() when done
+ *
+ * @see prefix_scan.h Prefix scan interface
+ * @see scan.h Low-level scan operations
+ */
+
 #include "prefix_scan.h"
 #include "scan.h"
 #include <config.h>

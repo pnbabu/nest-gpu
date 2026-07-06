@@ -20,6 +20,49 @@
  *
  */
 
+/**
+ * @file nestgpu.h
+ * @brief Main NEST GPU engine interface class definition
+ *
+ * This file defines the core NESTGPU class that manages GPU-accelerated
+ * spiking neural network simulations. It provides a Python-like interface
+ * compatible with the NEST simulator but optimized for GPU execution.
+ *
+ * Key Functionality:
+ * - Network creation and neuron model management
+ * - Connection setup with various connectivity rules
+ * - Simulation control and time management
+ * - Multi-GPU and MPI support for distributed simulations
+ * - Parameter access and modification
+ * - Data recording and retrieval
+ *
+ * Architecture:
+ * - Manages node groups for efficient GPU memory organization
+ * - Handles spike communication between neurons
+ * - Coordinates host-device memory transfers
+ * - Supports multiple connection storage structures
+ * - Provides random number generation utilities
+ *
+ * Usage Pattern:
+ * 1. Create NESTGPU instance
+ * 2. Set simulation parameters (time resolution, random seed)
+ * 3. Create neurons with Create()
+ * 4. Connect neurons with Connect()
+ * 5. Calibrate the network
+ * 6. Run simulation with Simulate()
+ * 7. Retrieve recorded data
+ *
+ * Performance Considerations:
+ * - Optimized for large-scale networks (>1000 neurons)
+ * - Efficient spike communication patterns
+ * - Memory coalescing for GPU kernels
+ * - Supports multiple GPU configurations
+ *
+ * @see BaseNeuron Base class for all neuron models
+ * @see Connection Connection management system
+ * @see SynSpec Synapse specifications
+ */
+
 #ifndef NESTGPU_H
 #define NESTGPU_H
 
@@ -51,22 +94,61 @@ class SynModel;
 
 class Connection;
 
-typedef uint inode_t;
+typedef uint inode_t;   /**< Integer type for node indices */
+typedef uint iconngroup_t; /**< Integer type for connection group indices */
 
-typedef uint iconngroup_t;
-
+/**
+ * @class Sequence
+ * @brief Represents a contiguous sequence of integers
+ *
+ * This class is used extensively throughout NEST GPU to represent
+ * sequences of node indices, connection indices, etc. It provides
+ * efficient indexing and slicing operations without storing the
+ * full sequence in memory.
+ *
+ * Memory Efficiency:
+ * - Only stores start index (i0) and length (n)
+ * - Represents sequence [i0, i0+1, ..., i0+n-1]
+ * - Constant memory regardless of sequence length
+ *
+ * Usage Examples:
+ * @code
+ * Sequence seq(10, 5);  // Represents [10, 11, 12, 13, 14]
+ * int val = seq[2];     // Returns 12
+ * Sequence sub = seq.Subseq(1, 3); // Represents [11, 12, 13]
+ * std::vector<int> vec = seq.ToVector(); // Converts to [10,11,12,13,14]
+ * @endcode
+ *
+ * Error Handling:
+ * - Throws ngpu_exception for out-of-bounds access
+ * - Validates index ranges in all operations
+ *
+ * @see NodeSeq Specialized sequence for node indices
+ * @see RemoteNodeSeq Sequence with host information
+ */
 class Sequence
 {
 public:
-  int i0;
-  int n;
+  int i0; /**< Starting index of the sequence */
+  int n;  /**< Length of the sequence */
 
+  /**
+   * @brief Constructor for Sequence
+   * @param i0 Starting index (default: 0)
+   * @param n Length of sequence (default: 0)
+   */
   Sequence( int i0 = 0, int n = 0 )
     : i0( i0 )
     , n( n )
   {
   }
 
+  /**
+   * @brief Index operator with bounds checking
+   * @param i Index within sequence (0 <= i < n)
+   * @return Actual value at position i (i0 + i)
+   * @throws ngpu_exception if index is out of bounds
+   */
   inline int
   operator[]( int i )
   {
@@ -81,6 +163,16 @@ public:
     return i0 + i;
   }
 
+  /**
+   * @brief Create a subsequence from this sequence
+   * @param first First index in subsequence (inclusive)
+   * @param last Last index in subsequence (inclusive)
+   * @return New Sequence representing the subsequence
+   * @throws ngpu_exception if range is invalid
+   *
+   * Example: seq.Subseq(2, 5) creates sequence containing
+   * elements at indices 2, 3, 4, 5 from the original sequence.
+   */
   inline Sequence
   Subseq( int first, int last )
   {
@@ -95,6 +187,14 @@ public:
     return Sequence( i0 + first, last - first + 1 );
   }
 
+  /**
+   * @brief Convert sequence to std::vector<int>
+   * @return Vector containing all elements in the sequence
+   *
+   * This method materializes the sequence into an actual vector.
+   * Useful for API compatibility but less memory-efficient.
+   * Uses std::iota for efficient population.
+   */
   // https://stackoverflow.com/questions/18625223
   inline std::vector< int >
   ToVector()
@@ -106,14 +206,43 @@ public:
   }
 };
 
-typedef Sequence NodeSeq;
+typedef Sequence NodeSeq; /**< Alias for Sequence, commonly used for node indices */
 
+/**
+ * @class RemoteNodeSeq
+ * @brief Represents a sequence of nodes on a remote MPI host
+ *
+ * This class extends NodeSeq to include host information for
+ * distributed simulations across multiple MPI processes. It's
+ * used when creating or connecting neurons on remote hosts.
+ *
+ * MPI Distribution:
+ * - Each host manages a subset of neurons
+ * - Remote node sequences allow cross-host connections
+ * - Used in multi-GPU and multi-node simulations
+ *
+ * Usage Example:
+ * @code
+ * // Create 100 neurons on host 2
+ * RemoteNodeSeq remote_nodes(2, NodeSeq(0, 100));
+ * // Connect local neurons to remote neurons
+ * nestgpu.Connect(local_neurons, remote_nodes, conn_spec, syn_spec);
+ * @endcode
+ *
+ * @see NESTGPU::RemoteCreate()
+ * @see NESTGPU::RemoteConnect()
+ */
 class RemoteNodeSeq
 {
 public:
-  int i_host;
-  NodeSeq node_seq;
+  int i_host;           /**< Index of the MPI host containing these nodes */
+  NodeSeq node_seq;     /**< Sequence of node indices on the remote host */
 
+  /**
+   * @brief Constructor for RemoteNodeSeq
+   * @param i_host Index of the remote host (default: 0)
+   * @param node_seq Node sequence on the remote host (default: empty)
+   */
   RemoteNodeSeq( int i_host = 0, NodeSeq node_seq = NodeSeq( 0, 0 ) )
     : i_host( i_host )
     , node_seq( node_seq )
@@ -121,65 +250,109 @@ public:
   }
 };
 
+/**
+ * @enum ExceptionHandlingMode
+ * @brief Defines exception handling behavior for NESTGPU operations
+ *
+ * Controls how NESTGPU handles errors and exceptions during simulation.
+ * Allows either immediate exit or graceful error handling.
+ */
 enum
 {
-  ON_EXCEPTION_EXIT = 0,
-  ON_EXCEPTION_HANDLE
+  ON_EXCEPTION_EXIT = 0,    /**< Exit immediately on exception */
+  ON_EXCEPTION_HANDLE       /**< Handle exception gracefully and set error flags */
 };
 
+/**
+ * @class NESTGPU
+ * @brief Main GPU-accelerated spiking neural network simulation engine
+ *
+ * The NESTGPU class provides the core functionality for simulating large-scale
+ * spiking neural networks on GPUs. It offers a Python-compatible interface
+ * while optimizing performance through GPU acceleration.
+ *
+ * Architecture Overview:
+ * - GPU-based neuron model simulation
+ * - Efficient spike communication system
+ * - Multi-GPU and MPI support for distributed computing
+ * - Flexible connection rules and synapse models
+ * - Real-time parameter access and modification
+ *
+ * Key Components:
+ * - Node Groups: Organized collections of neurons of the same type
+ * - Connection Management: Flexible connectivity rules and structures
+ * - Spike Buffers: Efficient spike storage and delivery
+ * - Random Number Generation: GPU-accelerated stochastic processes
+ * - MPI Interface: Distributed simulation support
+ *
+ * Typical Usage Pattern:
+ * 1. Initialize: NESTGPU ngpu; ngpu.SetRandomSeed(seed);
+ * 2. Configure: ngpu.SetTimeResolution(0.1);
+ * 3. Create Network: NodeSeq neurons = ngpu.Create("iaf_psc_exp", 1000);
+ * 4. Connect: ngpu.Connect(neurons, neurons, conn_spec, syn_spec);
+ * 5. Calibrate: ngpu.Calibrate();
+ * 6. Simulate: ngpu.Simulate(1000.0);
+ *
+ * Performance Characteristics:
+ * - Optimized for networks with >1000 neurons
+ * - Near-linear scaling with network size
+ * - Efficient spike communication patterns
+ * - Memory bandwidth optimized data structures
+ *
+ * Thread Safety:
+ * - Not thread-safe; use single instance per thread
+ * - MPI processes should have separate instances
+ *
+ * @see BaseNeuron Base class for neuron implementations
+ * @see Connection Connection management system
+ * @see ConnSpec Connection rule specifications
+ * @see SynSpec Synapse model specifications
+ */
 class NESTGPU
 {
-  float time_resolution_; // time resolution in ms
+  /* Simulation Parameters */
+  float time_resolution_; /**< Simulation timestep resolution in milliseconds */
 
-  curandGenerator_t* random_generator_;
+  /* Random Number Generation */
+  curandGenerator_t* random_generator_; /**< CUDA random number generator pointer */
+  unsigned long long kernel_seed_;         /**< Seed for GPU random number generation */
 
-  unsigned long long kernel_seed_;
+  /* State Flags */
+  bool calibrate_flag_; /**< Becomes true after network calibration is complete */
+  bool create_flag_;    /**< Becomes true just before creation of the first node */
 
-  bool calibrate_flag_; // becomes true after calibration
-
-  bool create_flag_; // becomes true just before creation of the first node
-
+  /* Core Components */
   // Pointer to the connection object. Note that conn_ is of the type
   // pointer-to-the(abstract)-base class
   // while the object it will point to should be an instance of a derived class
-  Connection* conn_;
+  Connection* conn_;           /**< Connection management system (polymorphic) */
+  Distribution* distribution_; /**< Random distribution system for parameters */
+  Multimeter* multimeter_;     /**< Multi-variable recording device */
+  int conn_struct_type_;       /**< Type of connection storage structure used */
 
-  Distribution* distribution_;
+  std::vector< BaseNeuron* > node_vect_;     /**< Vector of neuron model pointers */
+  std::vector< SynModel* > syn_group_vect_; /**< Vector of synapse model pointers */
 
-  Multimeter* multimeter_;
+  /* MPI Configuration */
+  int this_host_;          /**< Index of this MPI host (0-based) */
+  int n_hosts_;            /**< Total number of MPI hosts */
 
-  int conn_struct_type_;
+  /* Communication Flags */
+  bool external_spike_flag_; /**< If true, enables cross-host spike communication */
+  bool mpi_flag_;           /**< True if MPI is initialized and active */
+  bool mpi_bitpack_;        /**< Enable bit-packing for MPI spike communication */
+  bool max_n_ports_warning_; /**< Enable warnings for maximum port limit */
+  bool remote_spike_mul_;    /**< Enable spike multiplication for remote hosts */
 
-  std::vector< BaseNeuron* > node_vect_; // -> node_group_vect
+  /* Memory Management */
+  std::vector< int16_t > node_group_map_; /**< Host-side node group mapping */
+  int16_t* d_node_group_map_;             /**< Device-side node group mapping (GPU) */
 
-  std::vector< SynModel* > syn_group_vect_;
-
-  int this_host_;
-
-  int n_hosts_;
-
-  // if true it is possible to send spikes across different hosts
-  bool external_spike_flag_;
-
-  bool mpi_flag_; // true if MPI is initialized
-
-  bool mpi_bitpack_;
-
-  bool max_n_ports_warning_;
-  
-  bool remote_spike_mul_;
-
-  std::vector< int16_t > node_group_map_;
-
-  int16_t* d_node_group_map_;
-
-  int max_spike_buffer_size_;
-
-  int max_spike_num_;
-
-  int max_spike_per_host_;
-
-  int max_remote_spike_num_;
+  /* Spike Buffer Configuration */
+  int max_spike_buffer_size_; /**< Maximum size of spike buffers */
+  int max_spike_num_;         /**< Maximum number of spikes per timestep */
+  int max_spike_per_host_;    /**< Maximum spikes per host per timestep */
+  int max_remote_spike_num_; /**< Maximum remote spikes to receive */
 
   double max_spike_num_fact_;
 
@@ -193,63 +366,52 @@ class NESTGPU
 
   double sim_time_; // Simulation time in ms
 
-  double neur_t0_; // Neural activity simulation time origin
+  /* Simulation Time Management */
+  double max_spike_num_fact_;        /**< Factor for computing max_spike_num_ */
+  double max_spike_per_host_fact_;   /**< Factor for computing max_spike_per_host_ */
+  double max_remote_spike_num_fact_; /**< Factor for computing max_remote_spike_num_ */
+  double t_min_;                     /**< Minimum simulation time */
 
-  long long it_; // simulation time index
+  double neural_time_;   /**< Neural activity simulation time (ms) */
+  double sim_time_;      /**< Total simulation time (ms) */
+  double neur_t0_;       /**< Neural activity simulation time origin (ms) */
 
-  long long Nt_; // number of simulation time steps
+  long long it_;         /**< Current simulation time index */
+  long long Nt_;         /**< Total number of simulation time steps */
 
-  // int n_poiss_nodes_;
+  /* Node Distribution */
+  std::vector< int > n_remote_nodes_; /**< Number of remote nodes per host */
 
-  std::vector< int > n_remote_nodes_;
+  /* Performance Timing */
+  double start_real_time_; /**< Wall clock time when simulation started */
+  double build_real_time_;  /**< Wall clock time when network was built */
+  double end_real_time_;    /**< Wall clock time when simulation ended */
 
-  // int n_ext_nodes_;
+  /* Error Handling */
+  bool error_flag_;        /**< True if an error has occurred */
+  std::string error_message_; /**< Description of the last error */
+  unsigned char error_code_;  /**< Error code for the last error */
+  int on_exception_;        /**< Exception handling mode (ON_EXCEPTION_EXIT/HANDLE) */
 
-  // int i_ext_node_0_;
+  /* Configuration Parameters */
+  int verbosity_level_;     /**< Level of detail for status messages (0=quiet) */
+  bool print_time_;         /**< If true, print timing information */
+  bool remove_conn_key_;    /**< Connection key removal flag */
+  int nested_loop_algo_;    /**< Algorithm for nested loop operations */
+  int spike_buffer_algo_;   /**< Algorithm for spike buffer management */
+  bool check_node_maps_;    /**< Enable node map validation checks */
 
-  // int i_remote_node_0_;
+  /* Internal State */
+  bool first_out_conn_in_device_; /**< First output connection in device flag */
+  bool have_n_out_conn_;           /**< Have number of output connections flag */
+  bool delete_remote_node_map_;    /**< Delete remote node map flag */
+  bool delete_image_node_map_;     /**< Delete image node map flag */
 
-  double start_real_time_;
+  float use_all_source_node_fact_; /**< Factor for using all source nodes */
 
-  double build_real_time_;
-
-  double end_real_time_;
-
-  bool error_flag_;
-
-  std::string error_message_;
-
-  unsigned char error_code_;
-
-  int on_exception_;
-
-  int verbosity_level_;
-
-  bool print_time_;
-
-  bool remove_conn_key_;
-
-  int nested_loop_algo_;
-
-  int spike_buffer_algo_;
-
-  bool check_node_maps_;
-
-  bool first_out_conn_in_device_;
-
-  bool have_n_out_conn_;
-
-  bool delete_remote_node_map_;
-
-  bool delete_image_node_map_;
-
-  float use_all_source_node_fact_;
-  
-  std::vector< int > ext_neuron_input_spike_node_;
-
-  std::vector< int > ext_neuron_input_spike_port_;
-
-  std::vector< float > ext_neuron_input_spike_mul_;
+  std::vector< int > ext_neuron_input_spike_node_; /**< External neuron input spike nodes */
+  std::vector< int > ext_neuron_input_spike_port_; /**< External neuron input spike ports */
+  std::vector< float > ext_neuron_input_spike_mul_; /**< External neuron input spike multipliers */
 
   uint CreateNodeGroup( uint n_nodes, int n_ports );
 
@@ -315,24 +477,150 @@ class NESTGPU
   bool first_simulation_flag_;
 
 public:
+  /**
+   * @brief Constructor for NESTGPU
+   *
+   * Initializes the NESTGPU simulation engine with default parameters.
+   * Sets up CUDA context, allocates GPU memory, and initializes internal
+   * data structures for network simulation.
+   *
+   * Initialization includes:
+   * - CUDA device initialization
+   * - Random number generator setup
+   * - Memory allocation for internal structures
+   * - Default parameter configuration
+   *
+   * @note Must be called before any other NESTGPU methods
+   * @warning Throws exceptions if CUDA initialization fails
+   */
   NESTGPU();
 
+  /**
+   * @brief Destructor for NESTGPU
+   *
+   * Cleans up all GPU memory and resources allocated during the lifetime
+   * of the NESTGPU instance. This includes:
+   * - Freeing GPU memory arrays
+   * - Destroying CUDA random number generators
+   * - Closing MPI connections if active
+   * - Releasing internal data structures
+   *
+   * @note It's safe to call even if simulation was never run
+   */
   ~NESTGPU();
 
+  /**
+   * @brief Set the number of MPI hosts for distributed simulation
+   * @param n_hosts Total number of MPI processes/hosts
+   * @return 0 on success, error code on failure
+   *
+   * This method configures the simulation for distributed computing across
+   * multiple MPI processes. Each host manages a subset of neurons.
+   *
+   * Usage:
+   * @code
+   * ngpu.setNHosts(4);  // 4-way distributed simulation
+   * @endcode
+   *
+   * @note Must be called before network creation
+   * @warning Requires MPI initialization
+   * @see ConnectMpiInit()
+   */
   int setNHosts( int n_hosts );
 
+  /**
+   * @brief Set the index of the current MPI host
+   * @param i_host Index of this host (0 to n_hosts-1)
+   * @return 0 on success, error code on failure
+   *
+   * Identifies which host this process is in the distributed simulation.
+   * Each host should have a unique index.
+   *
+   * @note Must be called after setNHosts() and before network creation
+   * @see setNHosts()
+   */
   int setThisHost( int i_host );
 
+  /**
+   * @brief Set the random seed for all stochastic processes
+   * @param seed Random seed value (unsigned long long)
+   * @return 0 on success, error code on failure
+   *
+   * Initializes all random number generators (both host and GPU) with
+   * the specified seed to ensure reproducible simulations.
+   *
+   * Random Processes Affected:
+   * - Poisson spike generation
+   * - Connection randomness
+   * - Parameter randomization
+   * - Neuron model stochasticity
+   *
+   * Usage:
+   * @code
+   * ngpu.SetRandomSeed(12345);  // Reproducible simulation
+   * @endcode
+   *
+   * @note Should be called before network creation for reproducibility
+   * @warning Different seeds produce different network patterns
+   */
   int SetRandomSeed( unsigned long long seed );
 
+  /**
+   * @brief Set the simulation time resolution (timestep)
+   * @param time_res Time resolution in milliseconds
+   * @return 0 on success, error code on failure
+   *
+   * Sets the integration timestep for the simulation. Smaller values
+   * provide better accuracy but slower performance.
+   *
+   * Typical Values:
+   * - 0.1 ms: High accuracy, slower
+   * - 1.0 ms: Standard accuracy
+   * - 0.01 ms: Very high accuracy, much slower
+   *
+   * Considerations:
+   * - Should be smaller than smallest synaptic delay
+   * - Affects numerical stability of integration
+   * - Impacts memory usage for spike recording
+   *
+   * Usage:
+   * @code
+   * ngpu.SetTimeResolution(0.1);  // 0.1 ms timestep
+   * @endcode
+   *
+   * @note Must be called before Calibrate()
+   * @warning Cannot be changed after simulation starts
+   */
   int SetTimeResolution( float time_res );
 
+  /**
+   * @brief Get the current time resolution
+   * @return Time resolution in milliseconds
+   *
+   * Returns the simulation timestep set by SetTimeResolution().
+   */
   inline float
   GetTimeResolution()
   {
     return time_resolution_;
   }
 
+  /**
+   * @brief Set the total simulation time
+   * @param sim_time Total simulation time in milliseconds
+   * @return 0 on success
+   *
+   * Sets the duration for the next simulation run. This is used
+   * by Simulate() to determine when to stop.
+   *
+   * Usage:
+   * @code
+   * ngpu.SetSimTime(1000.0);  // Simulate for 1 second (1000 ms)
+   * ngpu.Simulate();           // Run for 1000 ms
+   * @endcode
+   *
+   * @note Can be changed between simulation calls
+   */
   inline int
   SetSimTime( float sim_time )
   {
@@ -340,12 +628,37 @@ public:
     return 0;
   }
 
+  /**
+   * @brief Get the total simulation time
+   * @return Total simulation time in milliseconds
+   *
+   * Returns the simulation time set by SetSimTime().
+   */
   inline float
   GetSimTime()
   {
     return sim_time_;
   }
 
+  /**
+   * @brief Set the verbosity level for status messages
+   * @param verbosity_level Verbosity level (0=quiet, higher=more verbose)
+   * @return 0 on success
+   *
+   * Controls the amount of debugging and status information printed
+   * during simulation.
+   *
+   * Levels:
+   * - 0: Quiet mode (no output)
+   * - 1-3: Basic status information
+   * - 4-5: Detailed debugging information
+   * - 6+: Very verbose (all operations)
+   *
+   * Usage:
+   * @code
+   * ngpu.SetVerbosityLevel(5);  // Detailed output
+   * @endcode
+   */
   inline int
   SetVerbosityLevel( int verbosity_level )
   {
@@ -422,8 +735,68 @@ public:
   int GetIntParam( std::string param_name );
   int SetIntParam( std::string param_name, int val );
 
+  /**
+   * @brief Create neurons of a specified model
+   * @param model_name Name of the neuron model (e.g., "iaf_psc_exp", "aeif_cond_alpha")
+   * @param n_nodes Number of neurons to create (default: 1)
+   * @param n_ports Number of input ports for synaptic connections (default: 1)
+   * @return NodeSeq representing the created neuron sequence
+   *
+   * Creates a group of neurons of the specified model with default parameters.
+   * The neurons are assigned consecutive indices and can be referenced using
+   * the returned NodeSeq.
+   *
+   * Available Neuron Models:
+   * - "iaf_psc_exp": Leaky integrate-and-fire with exponential PSC
+   * - "iaf_psc_alpha": LIF with alpha-function PSC
+   * - "aeif_cond_alpha": Adaptive exponential integrate-and-fire with conductance
+   * - "aeif_psc_exp": AdEx with current-based exponential PSC
+   * - "izhikevich": Izhikevich model
+   * - "poisson_generator": Poisson spike train generator
+   * - "spike_generator": Deterministic spike pattern generator
+   * - "spike_detector": Device for recording spike times
+   * - "parrot_neuron": Relay neuron that repeats input spikes
+   *
+   * Usage Examples:
+   * @code
+   * // Create 100 LIF neurons
+   * NodeSeq neurons = ngpu.Create("iaf_psc_exp", 100);
+   *
+   * // Create single neuron with 3 input ports
+   * NodeSeq neuron = ngpu.Create("aeif_cond_alpha", 1, 3);
+   * @endcode
+   *
+   * Performance:
+   * - Efficient batch creation
+   * - Memory allocated on GPU
+   * - Optimized for large groups
+   *
+   * @note Must be called before Connect()
+   * @warning Cannot create neurons after Calibrate()
+   * @see SetNeuronParam() for setting individual neuron parameters
+   */
   NodeSeq Create( std::string model_name, uint n_nodes = 1, int n_ports = 1 );
 
+  /**
+   * @brief Create neurons on a remote MPI host
+   * @param i_host Index of the remote host
+   * @param model_name Name of the neuron model
+   * @param n_nodes Number of neurons to create (default: 1)
+   * @param n_ports Number of input ports (default: 1)
+   * @return RemoteNodeSeq representing the remote neuron sequence
+   *
+   * Creates neurons on a specific remote host in distributed simulations.
+   * This allows cross-host connections and distributed network management.
+   *
+   * Usage:
+   * @code
+   * // Create 1000 neurons on host 2
+   * RemoteNodeSeq remote_neurons = ngpu.RemoteCreate(2, "iaf_psc_exp", 1000);
+   * @endcode
+   *
+   * @note Requires MPI initialization
+   * @see ConnectMpiInit(), setNHosts()
+   */
   RemoteNodeSeq RemoteCreate( int i_host, std::string model_name, inode_t n_nodes = 1, int n_ports = 1 );
 
   int CreateRecord( std::string file_name, std::string* var_name_arr, int* i_node_arr, int n_node );
@@ -616,16 +989,151 @@ public:
 
   int SetSpikeGenerator( int i_node, int n_spikes, float* spike_time, float* spike_mul );
 
+  /**
+   * @brief Calibrate the network before simulation
+   * @return 0 on success, error code on failure
+   *
+   * Prepares the network for simulation by:
+   * - Allocating GPU memory for spike buffers
+   * - Building connection data structures
+   * - Precomputing connection delays
+   * - Initializing neuron states
+   * - Setting up random number generators
+   * - Configuring MPI communication if enabled
+   *
+   * This method must be called once after network creation and connection
+   * setup, but before running the first simulation.
+   *
+   * Typical Workflow:
+   * @code
+   * ngpu.SetTimeResolution(0.1);
+   * NodeSeq neurons = ngpu.Create("iaf_psc_exp", 1000);
+   * ngpu.Connect(neurons, neurons, conn_spec, syn_spec);
+   * ngpu.Calibrate();  // Prepare for simulation
+   * ngpu.Simulate(1000.0);
+   * @endcode
+   *
+   * Performance:
+   * - One-time overhead before simulation
+   * - Enables efficient spike communication
+   * - Optimizes memory access patterns
+   *
+   * @note Must be called after all Create() and Connect() calls
+   * @note Must be called before first Simulate() call
+   * @warning Cannot add neurons or connections after calibration
+   */
   int Calibrate();
 
+  /**
+   * @brief Run simulation for the time set by SetSimTime()
+   * @return 0 on success, error code on failure
+   *
+   * Executes the neural network simulation for the duration specified
+   * by SetSimTime(). This is the main simulation method that advances
+   * the network state in time.
+   *
+   * Simulation Process:
+   * 1. Generate Poisson spikes (if any generators)
+   * 2. Deliver spikes to neuron inputs
+   * 3. Update neuron states (integrate equations)
+   * 4. Check for spike generation
+   * 5. Record spikes (if detectors enabled)
+   * 6. Handle MPI communication (if distributed)
+   * 7. Repeat until simulation time is reached
+   *
+   * Usage:
+   * @code
+   * ngpu.SetSimTime(1000.0);  // Simulate 1 second
+   * ngpu.Simulate();           // Run simulation
+   * @endcode
+   *
+   * @note Requires prior call to Calibrate()
+   * @see Simulate(float) for alternative interface
+   */
   int Simulate();
 
+  /**
+   * @brief Run simulation for specified duration
+   * @param sim_time Simulation duration in milliseconds
+   * @return 0 on success, error code on failure
+   *
+   * Convenience method that combines SetSimTime() and Simulate().
+   * Runs the simulation for the specified duration.
+   *
+   * Usage:
+   * @code
+   * ngpu.Simulate(1000.0);  // Simulate for 1000 ms (1 second)
+   * ngpu.Simulate(500.0);   // Simulate for additional 500 ms
+   * @endcode
+   *
+   * Performance Considerations:
+   * - Time scales linearly with sim_time and network size
+   * - GPU utilization typically >80% for large networks
+   * - Memory bandwidth is often the bottleneck
+   *
+   * @note Requires prior call to Calibrate()
+   * @note Can be called multiple times for successive simulation periods
+   */
   int Simulate( float sim_time );
 
+  /**
+   * @brief Start simulation in stepping mode
+   * @return 0 on success, error code on failure
+   *
+   * Initializes simulation for step-by-step execution using SimulationStep().
+   * Useful for:
+   * - Real-time simulations with external input
+   * - Interactive simulations
+   * - Debugging and analysis
+   *
+   * Usage:
+   * @code
+   * ngpu.StartSimulation();
+   * for (int i = 0; i < n_steps; i++) {
+   *     ngpu.SimulationStep();
+   *     // Perform operations between steps
+   * }
+   * @endcode
+   *
+   * @see SimulationStep()
+   */
   int StartSimulation();
 
+  /**
+   * @brief Execute single simulation step
+   * @return 0 on success, error code on failure
+   *
+   * Advances the simulation by one timestep (time_resolution_).
+   * Used with StartSimulation() for fine-grained control.
+   *
+   * @note Requires prior call to StartSimulation()
+   * @see StartSimulation()
+   */
   int SimulationStep();
 
+  /**
+   * @brief Print performance timing information
+   * @param verbosity_level Detail level (0-10, default: 5)
+   * @return 0 on success
+   *
+   * Outputs detailed timing statistics for various simulation components,
+   * useful for performance analysis and optimization.
+   *
+   * Information Printed:
+   * - Total simulation time
+   * - Time spent in each major component
+   * - GPU memory usage
+   * - MPI communication statistics (if applicable)
+   * - Spike buffer statistics
+   *
+   * Usage:
+   * @code
+   * ngpu.Simulate(1000.0);
+   * ngpu.PrintTimers(5);  // Print timing information
+   * @endcode
+   *
+   * @note Most useful after simulation has run
+   */
   int PrintTimers(int verbosity_level = 5);
 
   int ConnectMpiInit( int argc, char** argv );

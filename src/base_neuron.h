@@ -20,6 +20,76 @@
  *
  */
 
+/**
+ * @file base_neuron.h
+ * @brief Base class for all neuron model implementations in NEST GPU
+ *
+ * This file defines the BaseNeuron abstract base class that provides the
+ * common interface and functionality for all neuron models in the system.
+ * All specific neuron models (iaf_psc_alpha, aeif_cond_beta, etc.) inherit from
+ * this base class.
+ *
+ * Design Pattern:
+ * - Abstract base class with virtual methods
+ * - Template method pattern for model-specific customization
+ * - Strategy pattern for numerical integration
+ * - Factory pattern for neuron creation
+ *
+ * Neuron Model Architecture:
+ * Each neuron model must implement:
+ * - State variables: membrane potential, adaptation current, etc.
+ * - Parameters: time constants, thresholds, weights
+ * - Dynamics: differential equations governing neuron behavior
+ * - Spike detection: threshold crossing and reset
+ * - Synaptic integration: conductance or current-based inputs
+ *
+ * Memory Organization:
+ * - State variables stored in GPU arrays
+ * - Parameters stored in GPU arrays
+ * - Port-based synaptic input system
+ * - Efficient memory access patterns
+ *
+ * Variable Categories:
+ * - Scalar variables: Single value per neuron
+ * - Port variables: Per-port synaptic inputs
+ * - Integer variables: Discrete states
+ * - Array variables: Multi-dimensional parameters
+ *
+ * Key Functionality:
+ * - Neuron initialization and calibration
+ * - State updates during simulation
+ * - Spike detection and handling
+ * - Parameter access and modification
+ * - Synaptic input integration
+ * - Spike recording
+ *
+ * GPU Implementation:
+ * - Device-side state arrays for parallel access
+ * - Coalesced memory access patterns
+ * - Shared memory for frequently accessed data
+ * - Efficient spike communication
+ *
+ * Integration Points:
+ * - NESTGPU: Main simulation engine
+ * - Connection: Synaptic input delivery
+ * - Spike buffers: Spike communication
+ * - Recording devices: Data output
+ *
+ * Thread Safety:
+ * - Not thread-safe at instance level
+ * - Multiple instances for parallel use
+ * - GPU kernels are thread-safe
+ *
+ * Performance Considerations:
+ * - Memory bandwidth is the main bottleneck
+ * - Coalesced access patterns are critical
+ * - Shared memory usage for optimization
+ * - Thread divergence should be minimized
+ *
+ * @see NESTGPU Main simulation engine
+ * @see neuron_models.h Available neuron models
+ */
+
 #ifndef BASENEURON_H
 #define BASENEURON_H
 

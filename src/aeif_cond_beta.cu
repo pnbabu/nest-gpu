@@ -20,6 +20,83 @@
  *
  */
 
+/**
+ * @file aeif_cond_beta.cu
+ * @brief Adaptive exponential integrate-and-fire neuron with conductance-based beta synapses
+ *
+ * This file implements the aeif_cond_beta neuron model, which combines
+ * exponential integrate-and-fire dynamics with an adaptation current and
+ * conductance-based synaptic inputs with beta-function postsynaptic currents.
+ *
+ * Mathematical Model:
+ * -------------------
+ * The aeif_cond_beta model extends the standard integrate-and-fire neuron:
+ *
+ * Membrane potential dynamics:
+ * \[ C_m \frac{dV}{dt} = -g_L(V-E_L) + g_L \Delta_T \exp\left(\frac{V-V_{th}}{\Delta_T}\right) - w + I_{syn} + I_e \]
+ *
+ * Adaptation current dynamics:
+ * \[ \tau_w \frac{dw}{dt} = a(V-E_L) - w \]
+ *
+ * Conductance dynamics:
+ * \[ \tau_{g_{ex}} \frac{dg_{ex}}{dt} = -g_{ex} \]
+ * \[ \tau_{g_{in}} \frac{dg_{in}}{dt} = -g_{in} \]
+ *
+ * Beta function PSC:
+ * The beta function provides realistic synaptic dynamics with both rise and decay phases.
+ *
+ * Key Features:
+ * -------------
+ * - Exponential approach to spike threshold
+ * - Spike-triggered adaptation current
+ * - Conductance-based synaptic inputs
+ * - Beta-function postsynaptic currents
+ * - Refractory period support
+ *
+ * GPU Implementation:
+ * ------------------
+ * - Runge-Kutta 5th order integration
+ * - Parallel updates across neuron populations
+ * - Efficient memory access patterns
+ * - Spike detection on GPU
+ *
+ * Integration Method:
+ * ------------------
+ * Uses RK5 (Runge-Kutta 5th order) for accurate numerical integration:
+ * - Adaptive stepsize control
+ * - High accuracy for stiff equations
+ * - Stable for physiological parameters
+ *
+ * Model Parameters:
+ * ----------------
+ * - C_m: Membrane capacitance (pF)
+ * - g_L: Membrane conductance (nS)
+ * - E_L: Resting potential (mV)
+ * - V_th: Spike threshold (mV)
+ * - Delta_T: Slope factor (mV)
+ * - a: Adaptation coupling
+ * - b: Spike-triggered adaptation
+ * - tau_w: Adaptation time constant (ms)
+ * - V_reset: Reset potential (mV)
+ * - t_ref: Refractory period (ms)
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Synaptic inputs via conductances
+ * - Spike buffer: Output spike delivery
+ * - Recording: Multimeter compatibility
+ *
+ * Scientific Background:
+ * ----------------------
+ * Based on Brette & Gerstner (2005):
+ * "Adaptive Exponential Integrate-and-Fire Model as an Effective
+ * Description of Neuronal Activity"
+ *
+ * @see aeif_cond_beta.h Model interface
+ * @see aeif_cond_beta_kernel.h GPU kernels
+ * @see rk5.h Integration method
+ */
+
 #include "aeif_cond_beta.h"
 #include "aeif_cond_beta_kernel.h"
 #include "rk5.h"

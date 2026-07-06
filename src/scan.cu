@@ -2,6 +2,96 @@
         Matt Dean - https://github.com/mattdean1/cuda
 */
 
+/**
+ * @file scan.cu
+ * @brief GPU-accelerated parallel scan (prefix sum) implementation
+ *
+ * This file implements efficient parallel scan algorithms on GPU, which
+ * are fundamental parallel primitives used throughout NEST GPU for
+ * cumulative operations and array transformations.
+ *
+ * Algorithm Overview:
+ * ------------------
+ * Parallel scan (prefix sum) computes cumulative sums:
+ * Input:  [x0, x1, x2, x3, x4, x5, x6, x7]
+ * Output: [x0, x0+x1, x0+x1+x2, x0+x1+x2+x3, ...]
+ *
+ * Implementation uses work-efficient algorithm:
+ * - Two-phase approach (reduce, then down-sweep)
+ * - O(n log n) work, O(log n) depth
+ * - Bank conflict-free shared memory access
+ *
+ * Key Features:
+ * -------------
+ * - Conflict-free memory access patterns
+ * - Efficient shared memory usage
+ * - Support for arbitrary array sizes
+ * - Optimized for GPU architecture
+ * - Inclusive and exclusive scan variants
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel implementation:
+ * - Shared memory for intermediate results
+ * - Bank conflict avoidance
+ * - Efficient memory coalescing
+ * - Thread synchronization
+ *
+ * Memory Optimization:
+ * --------------------
+ * Bank conflict-free access:
+ * - CONFLICT_FREE_OFFSET macro
+ * - Shared memory bank management
+ * - Optimized indexing patterns
+ * - Reduced memory contention
+ *
+ * Thread Organization:
+ * -------------------
+ * - THREADS_PER_BLOCK: 512 threads
+ * - ELEMENTS_PER_BLOCK: 2x threads
+ * - Efficient block sizing
+ * - Optimal GPU utilization
+ *
+ * Performance:
+ * ------------
+ * - Near-optimal memory bandwidth
+ * - Scales with GPU core count
+ * - Efficient for large arrays
+ * - Minimal synchronization overhead
+ *
+ * Integration Points:
+ * ------------------
+ * - Prefix scan: High-level interface
+ * - Connection system: Spike counting
+ * - Data structures: Array operations
+ * - Sorting algorithms: Helper operations
+ *
+ * Applications in NEST GPU:
+ * ------------------------
+ * - Spike counting and indexing
+ * - Connection array processing
+ * - Synapse grouping
+ * - Data structure transformations
+ * - Parallel prefix operations
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Allocate output array
+ * 2. Call scan kernel with input/output
+ * 3. Result is cumulative sum
+ * 4. Use for indexing or accumulation
+ *
+ * Scientific Background:
+ * ----------------------
+ * Based on parallel scan algorithms:
+ * - Blelloch (1990): Prefix sums design
+ * - Harris et al. (2007): GPU optimization
+ * - Sengupta et al. (2007): Scan primitives
+ *
+ * @see scan.h Low-level scan interface
+ * @see prefix_scan.cu High-level wrapper
+ */
+
 #include "cuda_error.h"
 #include "scan.h"
 #include <config.h>

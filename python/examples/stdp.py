@@ -17,7 +17,7 @@ def STDPUpdate(w, Dt, tau_plus, tau_minus, Wplus, alpha, mu_plus, mu_minus, \
             w1 = 0.0
     return w1
 
-
+ngpu.SetKernelStatus({'spike_buffer_algo': 0})
 tolerance = 1.0e-5
 dt_step = 5.0
 N = 50
@@ -39,7 +39,7 @@ syn_group = ngpu.CreateSynGroup \
 sg = ngpu.Create("spike_generator")
 neuron0 = ngpu.Create("aeif_cond_beta")
 neuron1 = ngpu.Create("aeif_cond_beta", N)
-ngpu.SetStatus(neuron1, {"t_ref": 1000.0, "den_delay":den_delay})
+ngpu.SetStatus(neuron1, {"t_ref": 0, "den_delay":den_delay})
 
 time_diff = 200.0
 dt_list = []
@@ -51,6 +51,7 @@ for i in range(N):
 spike_times = [50.0]
 n_spikes = 1
 
+print(delay_stdp_list)
 
 # set spike times and height
 ngpu.SetStatus(sg, {"spike_times": spike_times})

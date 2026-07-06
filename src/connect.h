@@ -20,6 +20,63 @@
  *
  */
 
+/**
+ * @file connect.h
+ * @brief Connection management system for NEST GPU
+ *
+ * This file defines the core connection infrastructure for managing
+ * synaptic connections between neurons in GPU-accelerated simulations.
+ *
+ * Connection Architecture:
+ * The system supports multiple connection storage structures optimized
+ * for different network patterns and access patterns:
+ * - 12-byte structure: Source node (4B) + Target index (4B) + Port (4B)
+ * - 16-byte structure: Enhanced with additional metadata
+ * - Custom structures via template specialization
+ *
+ * Key Components:
+ * - Connection: Abstract base class for connection management
+ * - Connection rules: All-to-all, one-to-one, fixed indegree/outdegree
+ * - Spike routing: Efficient delivery of spikes between neurons
+ * - Memory management: GPU-optimized data structures
+ * - MPI support: Distributed connection management
+ *
+ * Connection Rules Supported:
+ * - One-to-one: Paired connections between source and target
+ * - All-to-all: Complete bipartite connectivity
+ * - Fixed indegree: Each target has fixed number of inputs
+ * - Fixed outdegree: Each source has fixed number of outputs
+ * - Fixed total number: Fixed total connections with random placement
+ *
+ * Data Structures:
+ * - Connection arrays stored in GPU memory
+ * - Sorted by source node for efficient spike delivery
+ * - Support for multiple synapse types per connection
+ * - Delay and weight management per connection
+ *
+ * GPU Optimization:
+ * - Coalesced memory access patterns
+ * - Efficient sorting algorithms (CUB library)
+ * - Shared memory for frequently accessed data
+ * - Parallel connection creation
+ *
+ * Performance Characteristics:
+ * - Memory bandwidth limited for spike delivery
+ * - Sorting complexity: O(n log n) for n connections
+ * - Efficient lookup: O(log n) binary search
+ * - Batch operations for bulk updates
+ *
+ * MPI/Distributed Support:
+ * - Host-local and inter-host connections
+ * - Remote spike communication
+ * - Distributed connection creation
+ * - Load balancing across hosts
+ *
+ * @see Connection Main connection management class
+ * @see connect_spec.h Connection rule specifications
+ * @see spike_buffer.h Spike storage and delivery
+ */
+
 #ifndef CONNECT_H
 #define CONNECT_H
 
@@ -47,66 +104,133 @@
 #include "utilities.h"
 
 #define INPUT_SPIKE_BUFFER_FLAG
+
+/**
+ * @enum SpikeBufferAlgorithm
+ * @brief Algorithms for spike buffer management
+ *
+ * Defines the approach used for storing and delivering spikes
+ * between neurons during simulation.
+ */
 enum
 {
-  OUTPUT_SPIKE_BUFFER_ALGO = 0,
-  INPUT_SPIKE_BUFFER_ALGO
+  OUTPUT_SPIKE_BUFFER_ALGO = 0, /**< Output spike buffer: store spikes from source neurons */
+  INPUT_SPIKE_BUFFER_ALGO        /**< Input spike buffer: organize spikes for target neurons */
 };
 
-typedef uint inode_t;
-typedef uint iconngroup_t;
+typedef uint inode_t;      /**< Type for node indices */
+typedef uint iconngroup_t; /**< Type for connection group indices */
 
+/**
+ * @namespace input_spike_buffer_ns
+ * @brief Kernels for input spike buffer management
+ *
+ * This namespace contains GPU kernels for managing input spike buffers,
+ * which organize spikes for efficient delivery to target neurons.
+ */
 namespace input_spike_buffer_ns
 {
-// Initialize array of first outgoing connection index of each node to default value of -1 (no outgoing connections)
+/**
+ * @brief Initialize first outgoing connection index array
+ *
+ * Sets all entries in the first_out_connection array to -1, indicating
+ * that no neurons have outgoing connections yet.
+ *
+ * @param n_local_nodes Number of local neurons
+ * @param first_out_connection Array to initialize (device memory)
+ */
 __global__ void initFirstOutConnectionKernel
 ( inode_t n_local_nodes, int64_t* first_out_connection );
 
-// Evaluates the index of the first outgoing connection of each source node (version for connection blocks)
+/**
+ * @brief Find first outgoing connection for each source neuron
+ *
+ * Computes the index of the first outgoing connection for each source neuron
+ * in the connection array. This is used for efficient spike routing.
+ *
+ * @tparam ConnKeyT Connection key type
+ * @param i_node_0 First source neuron index
+ * @param i_conn_0 First connection index
+ * @param n_conn Total number of connections
+ * @param first_out_connection Output array of first connection indices
+ * @param n_nodes Total number of neurons
+ * @param this_host Current host index (for MPI)
+ */
 template < class ConnKeyT >
 __global__ void getFirstOutConnectionKernel
 ( inode_t i_node_0, int64_t i_conn_0, int64_t n_conn, int64_t* first_out_connection, uint n_nodes, int this_host );
 }
 
-// Connection is the class used to represent connection data and methods.
-// It is defined as an abstract class, with pure virtual methods
-// that offer an interface for using this class in the same way
-// no matter what specific structure is used to represent individual connections
-// This abstract class will then be used as a base for derived classes
-// using templates, with the connection structure specified by template parameters
+/**
+ * @class Connection
+ * @brief Abstract base class for connection management
+ *
+ * Connection is the abstract base class used to represent connection data
+ * and methods. It defines the interface for connection management regardless
+ * of the specific storage structure used.
+ *
+ * Design Pattern:
+ * - Abstract base class with pure virtual methods
+ * - Template-based derived classes for specific structures
+ * - Polymorphic interface for uniform access
+ * - Support for multiple connection storage formats
+ *
+ * Connection Storage Structures:
+ * - 12-byte: Source node (4B) + Target index (4B) + Port (4B)
+ * - 16-byte: Enhanced structure with additional metadata
+ * - Custom structures via template specialization
+ *
+ * Key Functionality:
+ * - Connection creation with various rules
+ * - Spike routing and delivery
+ * - Memory management (GPU/host)
+ * - MPI support for distributed networks
+ * - Parameter access and modification
+ *
+ * Performance Considerations:
+ * - Memory coalescing for GPU access
+ * - Sorting for efficient spike delivery
+ * - Caching frequently accessed data
+ * - Batch operations for bulk updates
+ *
+ * Derived Classes:
+ * - Connection12B: 12-byte connection structure
+ * - Connection16B: 16-byte connection structure
+ * - Custom implementations via templates
+ *
+ * @see conn12b.h 12-byte connection implementation
+ * @see conn16b.h 16-byte connection implementation
+ */
 class Connection
 {
 public:
-  double InsertHostGroupSourceNode_time_;
-  double ConnectRemoteConnectSource_time_;
-  double ConnectRemoteConnectTarget_time_;
-  double SetUsedSourceNodes_time_;
-  double CountUsedSourceNodes_time_;
-  double AllocUsedSourceNodes_time_;
-  double GetUsedSourceNodeIndex_time_;
-  double SortUsedSourceNodeIndex_time_;
-  double AllocNodeToMap_time_;
-  double SearchNodeIndexNotInMap_time_;
-  double AllocRemoteSourceNodeMapBlocks_time_;
-  double AllocLocalSourceNodeMapBlocks_time_;
-  double InsertNodesInMap_time_;
-  double SortSourceImageNodeMap_time_;
-  double SetLocalNodeIndex_time_;
-  double FixConnectionSourceNodeIndexes_time_;
-  double SearchSourceNodesRangeInMap_time_;
-  double TranslateSourceNodeMap_time_;
-  double MapSourceNodeSequence_time_;
-  double RemoteConnectTarget_time_;
-  double RemoteConnectSource_time_;
+  /* Performance Timing Variables (for profiling and debugging) */
+  double InsertHostGroupSourceNode_time_;        /**< Time for inserting host group source nodes */
+  double ConnectRemoteConnectSource_time_;       /**< Time for remote source connection setup */
+  double ConnectRemoteConnectTarget_time_;       /**< Time for remote target connection setup */
+  double SetUsedSourceNodes_time_;               /**< Time for marking used source nodes */
+  double CountUsedSourceNodes_time_;             /**< Time for counting used source nodes */
+  double AllocUsedSourceNodes_time_;             /**< Time for allocating used source nodes */
+  double GetUsedSourceNodeIndex_time_;          /**< Time for getting used source node indices */
+  double SortUsedSourceNodeIndex_time_;         /**< Time for sorting used source node indices */
+  double AllocNodeToMap_time_;                   /**< Time for allocating node to map */
+  double SearchNodeIndexNotInMap_time_;         /**< Time for searching nodes not in map */
+  double AllocRemoteSourceNodeMapBlocks_time_;  /**< Time for allocating remote node map blocks */
+  double AllocLocalSourceNodeMapBlocks_time_;   /**< Time for allocating local node map blocks */
+  double InsertNodesInMap_time_;                /**< Time for inserting nodes in map */
+  double SortSourceImageNodeMap_time_;          /**< Time for sorting source image node map */
+  double SetLocalNodeIndex_time_;               /**< Time for setting local node indices */
+  double FixConnectionSourceNodeIndexes_time_; /**< Time for fixing connection source indices */
+  double SearchSourceNodesRangeInMap_time_;     /**< Time for searching source nodes in map */
+  double TranslateSourceNodeMap_time_;         /**< Time for translating source node map */
+  double MapSourceNodeSequence_time_;           /**< Time for mapping source node sequences */
+  double RemoteConnectTarget_time_;             /**< Time for remote target connections */
+  double RemoteConnectSource_time_;             /**< Time for remote source connections */
 
-  // the following is activated only for special testings on node maps
-  bool check_node_maps_;
-
-  //time resolution in ms
-  float time_resolution_;
-
-  // minimum allowed delay in time step units
-  uint min_allowed_delay_;
+  /* Configuration Parameters */
+  bool check_node_maps_;    /**< Enable node map validation (for testing) */
+  float time_resolution_;   /**< Simulation timestep in milliseconds */
+  uint min_allowed_delay_;  /**< Minimum allowed delay in timesteps */
 
   virtual ~Connection() {}; // destructor
 

@@ -20,6 +20,75 @@
  *
  */
 
+/**
+ * @file rk5.h
+ * @brief 5th-order Runge-Kutta-Fehlberg adaptive stepsize integrator
+ *
+ * This file implements the Runge-Kutta-Fehlberg (RKF45) method for adaptive
+ * stepsize integration of ordinary differential equations (ODEs). The method
+ * provides 5th-order accuracy with embedded 4th-order error estimation.
+ *
+ * Mathematical Background:
+ * The RKF45 method computes two solutions of different orders (4th and 5th)
+ * using the same function evaluations, allowing for efficient error estimation
+ * and stepsize control.
+ *
+ * The method uses the following Butcher tableau coefficients:
+ * @f[
+ * \begin{array}{c|cccccc}
+ * 0 & & & & & & \\
+ * \frac{1}{4} & \frac{1}{4} & & & & \\
+ * \frac{3}{8} & \frac{3}{32} & \frac{9}{32} & & & \\
+ * \frac{12}{13} & \frac{1932}{2197} & -\frac{7200}{2197} & \frac{7296}{2197} & & \\
+ * 1 & \frac{439}{216} & -8 & \frac{3680}{513} & -\frac{845}{4104} & \\
+ * \frac{1}{2} & -\frac{8}{27} & 2 & -\frac{3544}{2565} & \frac{1859}{4104} & -\frac{11}{40} \\
+ * \hline
+ * \text{4th order} & \frac{25}{216} & 0 & \frac{1408}{2565} & \frac{2197}{4104} & -\frac{1}{5} & 0 \\
+ * \text{5th order} & \frac{16}{135} & 0 & \frac{6656}{12825} & \frac{28561}{56430} & -\frac{9}{50} & \frac{2}{55}
+ * \end{array}
+ * @f]
+ *
+ * Adaptive Stepsize Control:
+ * The error estimate is used to adjust the stepsize:
+ * @f[
+ * h_{new} = h \cdot \left(\frac{\tol \cdot h}{\err}\right)^{1/5}
+ * @f]
+ * where tol is the tolerance and err is the estimated error.
+ *
+ * Error Estimation:
+ * The difference between 4th and 5th order solutions provides an error estimate:
+ * @f[
+ * \text{err} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}\left(\frac{y_{5,i}-y_{4,i}}{sc_i}\right)^2}
+ * @f]
+ * where @f$sc_i@f$ is a scaling factor for variable i.
+ *
+ * GPU Implementation:
+ * - Template-based design for variable problem sizes
+ * - One thread per ODE system
+ * - Coalesced memory access for state arrays
+ * - Efficient use of shared memory for intermediate calculations
+ *
+ * Performance Characteristics:
+ * - 6 function evaluations per step (rk5 to rk6)
+ * - Adaptive stepsize reduces total steps for smooth dynamics
+ * - Error control maintains accuracy while maximizing efficiency
+ * - Parallel integration of multiple independent systems
+ *
+ * Usage in NEST GPU:
+ * - Used for complex neuron models (e.g., multi-compartment)
+ * - Adaptive stepsize handles stiff dynamics
+ * - Particularly useful for models with widely varying time scales
+ *
+ * Numerical Stability:
+ * - Built-in error control prevents divergence
+ * - Stepsize limits prevent numerical instability
+ * - Scaling factors handle variables with different magnitudes
+ *
+ * @see rk5_const.h Runge-Kutta method constants
+ * @see rk5_interface.h Interface functions for neuron models
+ * @see propagator_stability.cu Stability analysis for exact integration
+ */
+
 #ifndef RK5_H
 #define RK5_H
 
@@ -30,8 +99,47 @@
 #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 
+/**
+ * @brief GPU kernel to initialize float array with constant value
+ *
+ * Sets all elements of a float array to a specified value, used for
+ * initializing integration variables and parameters.
+ *
+ * @param arr Array to initialize (device memory)
+ * @param n_elem Number of elements to set
+ * @param step Stride between elements
+ * @param val Value to set
+ *
+ * @note Used for array initialization in RK5 solver
+ */
 __global__ void SetFloatArray( float* arr, int n_elem, int step, float val );
 
+/**
+ * @brief GPU kernel to initialize ODE system arrays
+ *
+ * Initializes arrays of ODE systems for parallel integration on GPU.
+ * Each thread initializes one system with its initial conditions and parameters.
+ *
+ * @tparam DataStruct User-defined data structure for model-specific data
+ * @param array_size Number of ODE systems to initialize
+ * @param n_var Number of variables per system
+ * @param n_param Number of parameters per system
+ * @param x_arr Array for independent variable (time) values
+ * @param h_arr Array for step sizes
+ * @param y_arr Array for initial conditions (flattened 2D)
+ * @param par_arr Array for parameters (flattened 2D)
+ * @param x_min Initial value for independent variable
+ * @param h Initial step size
+ * @param data_struct Model-specific data structure
+ *
+ * Thread Organization:
+ * - Each thread processes one ODE system
+ * - Block size: typically 128-256 threads
+ * - Grid size: ceil(array_size / block_size)
+ *
+ * @note Called before integration begins
+ * @see ArrayCalibrate() for calibration step
+ */
 template < class DataStruct >
 __global__ void
 ArrayInit( int array_size,
@@ -54,6 +162,32 @@ ArrayInit( int array_size,
   }
 }
 
+/**
+ * @brief GPU kernel to calibrate ODE systems before integration
+ *
+ * Performs calibration step for ODE systems, computing any necessary
+ * pre-integration values or constants. Called after initialization but
+ * before integration begins.
+ *
+ * @tparam DataStruct User-defined data structure for model-specific data
+ * @param array_size Number of ODE systems to calibrate
+ * @param n_var Number of variables per system
+ * @param n_param Number of parameters per system
+ * @param x_arr Array for independent variable values
+ * @param h_arr Array for step sizes
+ * @param y_arr Array for system states
+ * @param par_arr Array for parameters
+ * @param x_min Initial value for independent variable
+ * @param h Initial step size
+ * @param data_struct Model-specific data structure
+ *
+ * Thread Organization:
+ * - Each thread processes one ODE system
+ * - Parallel calibration of multiple systems
+ *
+ * @note Called once before integration starts
+ * @see ArrayInit() for initial setup
+ */
 template < class DataStruct >
 __global__ void
 ArrayCalibrate( int array_size,
@@ -76,28 +210,82 @@ ArrayCalibrate( int array_size,
   }
 }
 
+/**
+ * @brief Core Runge-Kutta-Fehlberg integration step
+ *
+ * Performs one adaptive stepsize integration step using the RKF45 method.
+ * Computes both 4th and 5th order solutions, estimates error, and adjusts
+ * stepsize accordingly.
+ *
+ * @tparam NVAR Number of variables in the ODE system
+ * @tparam NPARAM Number of parameters
+ * @tparam DataStruct User-defined data structure for model-specific data
+ *
+ * @param x Current independent variable value (time) [updated]
+ * @param y Current state vector [updated]
+ * @param h Current step size [updated adaptively]
+ * @param h_min Minimum allowed step size
+ * @param h_max Maximum allowed step size
+ * @param param Parameter array
+ * @param data_struct Model-specific data structure
+ *
+ * Algorithm:
+ * 1. Compute initial derivatives (k1)
+ * 2. Compute scaling factors for error estimation
+ * 3. Perform RK45 substeps (k2-k6)
+ * 4. Compute 4th and 5th order solutions
+ * 5. Estimate error and adjust stepsize
+ * 6. Repeat if error is too large
+ * 7. Accept step and update state if error is acceptable
+ *
+ * Error Control:
+ * - Uses relative and absolute error tolerances
+ * - Scaling factors handle variables of different magnitudes
+ * - Stepsize adjusted based on error estimate
+ * - Prevents numerical instability with stepsize limits
+ *
+ * Performance:
+ * - 6 derivative evaluations per attempted step
+ * - Rejected steps require recomputation
+ * - Adaptive stepsize optimizes efficiency
+ * - Template-based optimization for fixed sizes
+ *
+ * Memory Usage:
+ * - Uses local arrays for intermediate calculations
+ * - ~8*NVAR floats of stack space
+ * - No dynamic memory allocation
+ *
+ * @note Device function - must be called from GPU kernel
+ * @warning May loop indefinitely if error tolerance cannot be met
+ * @see rk5_const.h for method constants
+ * @see Derivatives() for user-defined derivative function
+ */
 template < int NVAR, int NPARAM, class DataStruct >
 __device__ void
 RK5Step( double& x, float* y, float& h, float h_min, float h_max, float* param, DataStruct data_struct )
 {
-  float y_new[ NVAR ];
-  float k1[ NVAR ];
-  float k2[ NVAR ];
-  float k3[ NVAR ];
-  float k4[ NVAR ];
-  float k5[ NVAR ];
-  float k6[ NVAR ];
-  float y_scal[ NVAR ];
+  // Intermediate arrays for Runge-Kutta stages
+  float y_new[ NVAR ];      // Intermediate state values
+  float k1[ NVAR ];         // First RK coefficient
+  float k2[ NVAR ];         // Second RK coefficient
+  float k3[ NVAR ];         // Third RK coefficient
+  float k4[ NVAR ];         // Fourth RK coefficient
+  float k5[ NVAR ];         // Fifth RK coefficient
+  float k6[ NVAR ];         // Sixth RK coefficient
+  float y_scal[ NVAR ];     // Scaling factors for error estimation
 
+  // Compute initial derivatives and scaling factors
   Derivatives< NVAR, NPARAM >( x, y, k1, param, data_struct );
   for ( int i = 0; i < NVAR; i++ )
   {
     y_scal[ i ] = fabs( y[ i ] ) + fabs( k1[ i ] * h ) + scal_min;
   }
 
+  // Adaptive stepsize loop
   float err;
   for ( ;; )
   {
+    // Enforce stepsize limits
     if ( h > h_max )
     {
       h = h_max;
@@ -107,12 +295,26 @@ RK5Step( double& x, float* y, float& h, float h_min, float h_max, float* param, 
       h = h_min;
     }
 
+    // RK45 substeps - compute intermediate values
+    // Stage 2
     for ( int i = 0; i < NVAR; i++ )
     {
       y_new[ i ] = y[ i ] + h * a21 * k1[ i ];
     }
 
     Derivatives< NVAR, NPARAM >( x + c2 * h, y_new, k2, param, data_struct );
+
+    // Stage 3
+    for ( int i = 0; i < NVAR; i++ )
+    {
+      y_new[ i ] = y[ i ] + h * ( a31 * k1[ i ] + a32 * k2[ i ] );
+    }
+    Derivatives< NVAR, NPARAM >( x + c3 * h, y_new, k3, param, data_struct );
+
+    // Stage 4
+    for ( int i = 0; i < NVAR; i++ )
+    {
+      y_new[ i ] = y[ i ] + h * ( a41 * k1[ i ] + a42 * k2[ i ] + a43 * k3[ i ] );
 
     for ( int i = 0; i < NVAR; i++ )
     {

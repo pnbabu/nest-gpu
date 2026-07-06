@@ -20,6 +20,107 @@
  *
  */
 
+/**
+ * @file connect_rules.cu
+ * @brief Connection rule implementations for neural network connectivity
+ *
+ * This file implements various connection rules for creating neural network
+ * connectivity patterns, from simple all-to-all connections to complex
+ * random connectivity with specific degree distributions.
+ *
+ * Connection Rules:
+ * ----------------
+ * Supported connectivity patterns:
+ *
+ * 1. ALL_TO_ALL: Every source connects to every target
+ *    - Complete bipartite connectivity
+ *    - N_source × N_target connections
+ *    - Useful for dense networks
+ *
+ * 2. ONE_TO_ONE: Paired connections between sources and targets
+ *    - 1-to-1 mapping
+ *    - Requires equal populations
+ *    - Useful for aligned networks
+ *
+ * 3. FIXED_INDEGREE: Each target receives fixed number of random inputs
+ *    - Constant indegree across targets
+ *    - Random source selection
+ *    - Biologically realistic
+ *
+ * 4. FIXED_OUTDEGREE: Each source sends to fixed number of random targets
+ *    - Constant outdegree across sources
+ *    - Random target selection
+ *    - Balanced fan-out
+ *
+ * 5. FIXED_TOTAL_NUMBER: Fixed number of random connections
+ *    - Total connection count specified
+ *    - Random source-target pairing
+ *    - Sparse connectivity
+ *
+ * Implementation Details:
+ * ----------------------
+ * GPU-accelerated connection creation:
+ * - Parallel random connection generation
+ * - curand for GPU random numbers
+ * - Efficient duplicate detection
+ * - Optimized memory allocation
+ *
+ * ConnSpec Class:
+ * ---------------
+ * Manages connection specification:
+ * - Connection rule selection
+ * - Degree parameters
+ * - Autapse/self-connection control
+ * - Multi synapse support
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle connection creation:
+ * - Parallel connection generation
+ * - Efficient random sampling
+ * - Coalesced memory writes
+ * - Minimized thread divergence
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Main connection interface
+ * - Distribution: Random number generation
+ * - Remote_connect: Distributed connectivity
+ * - NestGPU: Network construction
+ *
+ * Performance:
+ * ------------
+ * - Optimized for large networks
+ * - Efficient memory usage
+ * - Fast connection creation
+ * - Scalable to millions of connections
+ *
+ * Thread Safety:
+ * --------------
+ * - Connection creation is sequential
+ * - GPU kernels are parallel
+ * - Thread-safe after creation
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Define ConnSpec with rule and parameters
+ * 2. Define SynSpec with synaptic properties
+ * 3. Call Connect() with source, target, and specifications
+ * 4. System creates connections using GPU acceleration
+ *
+ * Scientific Background:
+ * ----------------------
+ * Connection rules based on:
+ * - All-to-all: Complete connectivity
+ * - Fixed indegree: Balanced input networks
+ * - Random connectivity: Sparse cortical networks
+ * - Scale-free networks: Power-law degree distributions
+ *
+ * @see connect_rules.h Connection rule interfaces
+ * @see connect.h Main connection management
+ * @see distribution.h Random number handling
+ */
+
 #include "connect.h"
 #include "connect_rules.h"
 #include "distribution.h"

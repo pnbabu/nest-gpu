@@ -20,6 +20,103 @@
  *
  */
 
+/**
+ * @file base_neuron.cu
+ * @brief Base neuron implementation providing common functionality for all neuron models
+ *
+ * This file implements the BaseNeuron abstract base class that provides the foundation
+ * for all neuron model implementations in NEST GPU. It contains GPU kernels and member
+ * functions that are shared across different neuron types.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The BaseNeuron class implements a flexible framework for neuron models with:
+ * - Multiple variable types (scalar, port, integer, array)
+ * - GPU-accelerated state updates
+ * - Spike detection and recording
+ * - Parameter management
+ * - Synaptic input integration
+ *
+ * Memory Organization:
+ * -------------------
+ * - var_arr_: GPU array storing all floating-point state variables
+ * - param_arr_: GPU array storing all floating-point parameters
+ * - int_var_pt_: Vector of pointers to integer state variables
+ * - group_param_: Group-level parameters shared across neurons
+ *
+ * Variable Categories:
+ * -------------------
+ * 1. Scalar Variables: Single value per neuron (e.g., membrane potential)
+ * 2. Port Variables: Per-port values for synaptic inputs (e.g., conductances)
+ * 3. Integer Variables: Discrete states (e.g., spike counts)
+ * 4. Array Variables: Multi-dimensional parameters (e.g., weight arrays)
+ *
+ * GPU Implementation:
+ * ------------------
+ * All neuron state updates are performed on the GPU using CUDA kernels:
+ * - BaseNeuronSetIntArray: Initialize integer arrays
+ * - BaseNeuronSetIntPtArray: Set integer values at specific positions
+ * - Parallel updates across thousands of neurons
+ * - Coalesced memory access patterns for efficiency
+ *
+ * Spike Management:
+ * ----------------
+ * - Spike counting per neuron
+ * - Spike time recording with configurable buffers
+ * - Flexible recording strategies (all spikes, fixed intervals)
+ * - Efficient memory usage with circular buffers
+ *
+ * Parameter Management:
+ * ---------------------
+ * - SetScalParam: Set individual neuron parameters
+ * - SetPortParam: Set port-specific parameters
+ * - SetArrayParam: Set array parameters
+ * - SetGroupParam: Set group-level parameters
+ * - Distribution-based parameter initialization
+ *
+ * Key Functionality:
+ * -----------------
+ * - Init(): Initialize neuron groups with proper indexing
+ * - Calibrate(): Prepare parameters for simulation
+ * - Update(): Advance neuron states by one time step
+ * - GetVarArr()/GetParamArr(): Access GPU arrays
+ * - GetIntVar()/GetScalVar(): Retrieve specific variables
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU: Main simulation engine creates and manages neuron groups
+ * - Connect: Synaptic connections deliver spikes to neuron ports
+ * - Spike buffers: Manage spike delivery timing
+ * - Recording devices: Capture neuron activity
+ *
+ * Performance Optimizations:
+ * ---------------------------
+ * - Minimize GPU-CPU data transfer
+ * - Use shared memory for frequently accessed parameters
+ * - Coalesced global memory access patterns
+ * - Efficient spike buffer management
+ * - Vectorized operations across neuron populations
+ *
+ * Thread Safety:
+ * --------------
+ * - Individual neuron instances are not thread-safe
+ * - Multiple neuron groups can be updated in parallel
+ * - GPU kernels handle concurrent access safely
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create specific neuron model (e.g., iaf_psc_alpha)
+ * 2. Call Init() to set up neuron group
+ * 3. Set parameters using Set*Param() methods
+ * 4. Call Calibrate() to prepare for simulation
+ * 5. Call Update() each simulation step
+ * 6. Retrieve recorded data using Get* methods
+ *
+ * @see base_neuron.h Interface definition
+ * @see neuron_models.h Available neuron models
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <algorithm>
 #include <vector>
 

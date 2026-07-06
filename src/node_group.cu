@@ -20,6 +20,64 @@
  *
  */
 
+/**
+ * @file node_group.cu
+ * @brief Node group management for NEST GPU
+ *
+ * This file implements the management of neuron groups (node groups)
+ * in NEST GPU. Node groups are collections of neurons of the same
+ * model type that are processed together for efficiency.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * Node groups organize neurons by model type:
+ * - All neurons in a group are same model
+ * - Efficient GPU memory layout
+ * - Optimized update kernels
+ * - Simplified parameter management
+ *
+ * Node Group Structure:
+ * ---------------------
+ * Each node group contains:
+ * - Neuron model type
+ * - Number of neurons in group
+ * - Starting neuron index
+ * - Parameter arrays
+ * - State variable arrays
+ * - GPU memory pointers
+ *
+ * GPU Memory Layout:
+ * ------------------
+ * Efficient memory organization:
+ * - Coalesced access patterns
+ * - Shared parameter storage
+ * - Optimized for parallel updates
+ * - Minimized memory transfers
+ *
+ * Key Features:
+ * -------------
+ * - Constant memory for group metadata
+ * - Efficient indexing schemes
+ * - Batched parameter operations
+ * - Optimized for GPU kernels
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU: Creates and manages node groups
+ * - Neuron models: Stored in appropriate groups
+ * - Update kernels: Process groups in parallel
+ * - Connection system: References node groups
+ *
+ * Performance:
+ * ------------
+ * - Minimizes GPU kernel launches
+ * - Efficient memory access patterns
+ * - Optimized for parallel processing
+ *
+ * @see node_group.h Node group interface and structures
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <config.h>
 #include <iostream>
 

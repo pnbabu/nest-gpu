@@ -20,6 +20,107 @@
  *
  */
 
+/**
+ * @file iaf_psc_exp.cu
+ * @brief Leaky integrate-and-fire neuron with exponential postsynaptic currents
+ *
+ * This file implements the iaf_psc_exp neuron model, a classic
+ * leaky integrate-and-fire neuron with current-based synaptic inputs
+ * that produce exponential postsynaptic current waveforms.
+ *
+ * Mathematical Model:
+ * -------------------
+ * The iaf_psc_exp model implements standard LIF dynamics:
+ *
+ * Membrane potential equation:
+ * \[ \tau_m \frac{dV}{dt} = -(V - E_L) + I_{syn} + I_e \]
+ *
+ * Where total synaptic current:
+ * \[ I_{syn} = I_{ex} + I_{in} \]
+ *
+ * Exponential PSC dynamics:
+ * \[ \tau_{ex} \frac{dI_{ex}}{dt} = -I_{ex} \]
+ * \[ \tau_{in} \frac{dI_{in}}{dt} = -I_{in} \]
+ *
+ * Spike condition and reset:
+ * \[ \text{if } V \geq \Theta: V \leftarrow V_{reset}, \quad t_{ref} \text{ refractory period} \]
+ *
+ * Key Features:
+ * -------------
+ * - Leaky membrane potential dynamics
+ * - Exponential postsynaptic currents
+ * - Separate excitatory/inhibitory receptors
+ * - Absolute refractory period
+ * - Current-based synaptic inputs
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel for parallel updates:
+ * - Each thread updates one neuron
+ * - Efficient propagator-based integration
+ * - Coalesced memory access patterns
+ * - Optimized for large populations
+ *
+ * Integration Method:
+ * ------------------
+ * Uses exact integration with propagators:
+ * - Analytical solution for linear dynamics
+ * - High numerical stability
+ * - Exact for time-invariant parameters
+ * - Efficient for large populations
+ *
+ * Model Parameters:
+ * ----------------
+ * - tau_m: Membrane time constant (ms)
+ * - C_m: Membrane capacitance (pF)
+ * - E_L: Resting potential (mV)
+ * - I_e: External input current (pA)
+ * - Theta_rel: Relative spike threshold (mV)
+ * - V_reset_rel: Relative reset potential (mV)
+ * - tau_ex: Excitatory PSC time constant (ms)
+ * - tau_in: Inhibitory PSC time constant (ms)
+ * - t_ref: Refractory period (ms)
+ *
+ * State Variables:
+ * ----------------
+ * - V_m_rel: Relative membrane potential
+ * - I_syn_ex: Excitatory synaptic current
+ * - I_syn_in: Inhibitory synaptic current
+ * - refractory_step: Refractory period counter
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Synaptic inputs via currents
+ * - Spike buffer: Output spike delivery
+ * - Recording: Multimeter compatibility
+ *
+ * Performance:
+ * ------------
+ * - Very fast due to exact integration
+ * - Scales efficiently to large populations
+ * - Minimal computational overhead
+ * - Optimized GPU memory usage
+ *
+ * Scientific Background:
+ * ----------------------
+ * Based on classic integrate-and-fire model:
+ * - Lapicque (1907): Original leaky integrator
+ * - Stein (1965): Stochastic version
+ * - Tuckwell (1988): Theory and applications
+ *
+ * Applications:
+ * -------------
+ * - Basic spiking neuron dynamics
+ * - Network oscillations
+ * - Rate coding networks
+ * - Educational demonstrations
+ * - Large-scale network simulations
+ *
+ * @see iaf_psc_exp.h Model interface
+ * @see propagator_stability.h Exact integration
+ * @see nestgpu.h Main simulation engine
+ */
+
 // adapted from:
 // https://github.com/nest/nest-simulator/blob/master/models/iaf_psc_exp.cpp
 

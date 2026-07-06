@@ -20,6 +20,87 @@
  *
  */
 
+/**
+ * @file send_spike.cu
+ * @brief Spike emission and delivery system for NEST GPU
+ *
+ * This file implements the spike emission and delivery system that
+ * manages spike propagation from source neurons to target neurons
+ * through synaptic connections.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The spike delivery system:
+ * - Collects spikes from source neurons
+ * - Routes spikes through connections
+ * - Delivers spikes to target neurons
+ * - Manages spike multiplicity
+ * - Handles spike delays
+ *
+ * Key Components:
+ * ---------------
+ * - SpikeNum: Count of emitted spikes
+ * - SpikeSourceIdx: Source neuron indices
+ * - SpikeConnIdx: Connection indices
+ * - SpikeMul: Spike multiplicities
+ * - SpikeTargetNum: Target counts
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels for spike handling:
+ * - Parallel spike collection
+ * - Atomic operations for consistency
+ * - Efficient memory access patterns
+ * - Minimized thread divergence
+ *
+ * Spike Delivery Process:
+ * ----------------------
+ * 1. Neurons emit spikes
+ * 2. SendSpike collects spike data
+ * 3. Spikes routed through connections
+ * 4. Delivered to input spike buffers
+ * 5. Target neurons receive inputs
+ *
+ * Key Functions:
+ * -------------
+ * - SendSpike: Emit spike with metadata
+ * - atomicAdd: Thread-safe spike counting
+ * - Spike routing through connections
+ * - Delay-based spike scheduling
+ *
+ * Integration Points:
+ * ------------------
+ * - Input spike buffer: Receives delivered spikes
+ * - Connect: Connection information for routing
+ * - Neuron models: Spike emission
+ * - Spike buffer: Spike storage
+ *
+ * Performance:
+ * ------------
+ * - Atomic operations for thread safety
+ * - Coalesced memory writes
+ * - Efficient spike routing
+ * - Minimal overhead
+ *
+ * Thread Safety:
+ * --------------
+ * - Atomic spike emission
+ * - Thread-safe counters
+ * - Concurrent spike delivery
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Neuron emits spike
+ * 2. SendSpike called with spike data
+ * 3. Spike routed to connections
+ * 4. Delivered to input buffers
+ * 5. Processed by target neurons
+ *
+ * @see send_spike.h Spike emission interface
+ * @see input_spike_buffer.cu Spike reception
+ * @see connect.h Connection routing
+ */
+
 #include "cuda_error.h"
 #include "input_spike_buffer.h"
 #include "send_spike.h"

@@ -20,6 +20,139 @@
  *
  */
 
+/**
+ * @file connect.cu
+ * @brief GPU-accelerated connectivity management for spiking neural networks
+ *
+ * This file implements the core connectivity infrastructure for NEST GPU,
+ * handling creation, storage, and management of synaptic connections between
+ * neurons. It provides efficient GPU-based algorithms for network construction
+ * and spike delivery.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The connectivity system uses a compressed sparse representation optimized
+ * for GPU processing. Connections are organized by source neurons to enable
+ * efficient spike delivery during simulation.
+ *
+ * Connection Storage:
+ * ------------------
+ * Connections are stored using a grouped sparse format:
+ * - ConnGroupIdx0: Index of first connection group for each source neuron
+ * - ConnGroupIConn0: Index of first connection in each group
+ * - ConnGroupDelay: Delay associated with each connection group
+ * - ConnGroupDelayRate: Parameter for delay-based routing
+ * - ConnGroupStart: First connection index in each group
+ * - ConnGroupEnd: Last connection index + 1 in each group
+ *
+ * Bit-Packed Connection Data:
+ * ---------------------------
+ * Individual connections are stored in compressed format using bit packing:
+ * - Source neuron ID: MaxNodeNBits bits
+ * - Delay steps: MaxDelayNBits bits
+ * - Target neuron ID: Remaining bits
+ * - Synapse group and port info: Additional fields
+ *
+ * This compression reduces memory footprint and improves cache efficiency.
+ *
+ * Connection Rules:
+ * ----------------
+ * Supported connectivity patterns:
+ * - all_to_all: Every source connects to every target
+ * - one_to_one: Paired connections between source and target
+ * - fixed_indegree: Each target receives fixed number of random inputs
+ * - fixed_outdegree: Each source sends to fixed number of random targets
+ * - fixed_total_number: Fixed number of random connections
+ *
+ * GPU Implementation:
+ * ------------------
+ * Connection creation uses parallel algorithms:
+ * - curand for GPU-based random number generation
+ * - CUB library for efficient parallel primitives
+ * - Bit manipulation for connection data packing
+ * - Coalesced memory access patterns
+ *
+ * Key Algorithms:
+ * --------------
+ * 1. Connection Generation:
+ *    - Parallel random connection creation
+ *    - Duplicate detection and removal
+ *    - Weight and delay assignment
+ *
+ * 2. Connection Sorting:
+ *    - Sort by source neuron for efficient spike delivery
+ *    - Group connections by (source, delay, synapse_type)
+ *    - Build index structures for fast access
+ *
+ * 3. Spike Delivery:
+ *    - Use grouped structure to minimize branching
+ *    - Efficient scattering of synaptic inputs
+ *    - Delay-based routing through spike buffers
+ *
+ * Memory Management:
+ * -----------------
+ * - Dynamic allocation based on network size
+ * - Pinned memory for CPU-GPU transfers
+ * - Efficient memory alignment for coalesced access
+ * - Compression to reduce memory requirements
+ *
+ * Bit Packing Details:
+ * ------------------
+ * The system uses bit-level compression to store connection data:
+ * - 32-bit integers store multiple connection attributes
+ * - Bit masks extract individual components
+ * - Configurable bit allocation for different attributes
+ * - Trade-off between compression ratio and decompression speed
+ *
+ * Connection Grouping:
+ * --------------------
+ * Connections with same (source, delay, synapse_type) are grouped:
+ * - Reduces duplicate delay information storage
+ * - Enables bulk spike delivery operations
+ * - Improves memory access patterns
+ * - Simplifies spike buffer management
+ *
+ * Integration Points:
+ * ------------------
+ * - NESTGPU: Main simulation engine uses connectivity for spike delivery
+ * - Spike buffers: Use connection delays for routing
+ * - Neuron models: Receive synaptic inputs through connections
+ * - MPI: Distributed connection management
+ *
+ * Performance Considerations:
+ * ---------------------------
+ * - Memory bandwidth is primary bottleneck
+ * - Coalesced access patterns are critical
+ * - Minimize thread divergence in connection kernels
+ * - Use shared memory for frequently accessed connection data
+ * - Batch connection creation for efficiency
+ *
+ * Thread Safety:
+ * --------------
+ * - Connection creation is not thread-safe
+ * - Spike delivery using connections is thread-safe on GPU
+ * - Multiple networks require separate connection instances
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Define connection rule and parameters
+ * 2. Call Connect() with source and target neuron groups
+ * 3. System creates connections using GPU-accelerated algorithms
+ * 4. Connections are sorted and indexed for efficient access
+ * 5. During simulation, use connections for spike delivery
+ *
+ * Mathematical Foundation:
+ * -----------------------
+ * Connection probabilities and random selection:
+ * - Fixed indegree: Hypergeometric distribution
+ * - Fixed outdegree: Binomial distribution
+ * - Uniform random selection with GPU-accelerated sampling
+ *
+ * @see connect.h Connectivity interface and classes
+ * @see connect_rules.h Connection rule implementations
+ * @see nestgpu.h Main simulation engine
+ */
+
 // #include <time.h>
 // #include <sys/time.h>
 #include "cuda_error.h"

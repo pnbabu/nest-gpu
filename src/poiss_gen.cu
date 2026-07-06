@@ -20,6 +20,71 @@
  *
  */
 
+/**
+ * @file poiss_gen.cu
+ * @brief GPU-accelerated Poisson spike generator for NEST GPU
+ *
+ * This file implements the Poisson spike generator, which produces
+ * stochastic spike trains according to Poisson statistics. This device
+ * is essential for simulating random neural activity and external inputs.
+ *
+ * Mathematical Foundation:
+ * -----------------------
+ * The Poisson process generates spikes stochastically with:
+ * - Constant rate parameter λ (spikes per second)
+ * - Exponential inter-spike intervals: P(t) = λ * exp(-λt)
+ * - Memoryless property: each time step independent
+ * - Mean rate = λ, variance = λ
+ *
+ * Implementation Details:
+ * ----------------------
+ * GPU-accelerated spike generation using:
+ * - curand library for parallel random number generation
+ * - Each generator instance maintains independent state
+ * - Vectorized operation across multiple generators
+ * - Efficient memory access patterns
+ *
+ * Key Features:
+ * -------------
+ * - Configurable firing rate (Hz)
+ * - Temporal precision limited by simulation resolution
+ * - Independent random streams per generator
+ * - Scalable to thousands of generators
+ * - Statistical properties match theoretical Poisson process
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels handle spike generation:
+ * - Parallel RNG state update
+ * - Poisson-distributed spike count calculation
+ * - Spike timing generation
+ * - Efficient memory access patterns
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Poisson generators connect to neuron populations
+ * - Spike buffers: Generated spikes enter normal delivery pipeline
+ * - Neuron models: Receive spikes through synaptic connections
+ * - Random number system: Uses curand for GPU-based randomness
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Create Poisson generator(s)
+ * 2. Set firing rate parameter
+ * 3. Connect to target neurons
+ * 4. During simulation, generates and delivers spikes
+ *
+ * Performance:
+ * ------------
+ * - Highly parallel on GPU
+ * - Minimal CPU intervention
+ * - Scales linearly with generator count
+ * - Memory efficient for large populations
+ *
+ * @see poiss_gen.h Poisson generator interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include <cmath>
 #include <config.h>
 #include <iostream>

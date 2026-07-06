@@ -20,6 +20,55 @@
  *
  */
 
+/**
+ * @file distribution.cu
+ * @brief Statistical distribution handling for NEST GPU
+ *
+ * This file implements GPU-accelerated sampling from various statistical
+ * distributions used in neural network simulations, including normal,
+ * uniform, lognormal, and other distributions.
+ *
+ * Supported Distributions:
+ * -----------------------
+ * - normal: Gaussian distribution
+ * - normal_clipped: Gaussian with value limits
+ * - uniform: Uniform distribution
+ * - lognormal: Log-normal distribution
+ * - exponential: Exponential distribution
+ * - binomial: Binomial distribution
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels for parallel sampling:
+ * - curand library for random number generation
+ * - Vectorized operations across arrays
+ * - Efficient memory access patterns
+ * - Minimized thread divergence
+ *
+ * Key Functions:
+ * --------------
+ * - Distribution classes for each type
+ * - GPU kernels for sampling
+ * - Host-side parameter management
+ * - Efficient batch processing
+ *
+ * Integration Points:
+ * ------------------
+ * - Connection creation: Random connectivity patterns
+ * - Parameter initialization: Heterogeneous neuron parameters
+ * - Noise injection: Stochastic dynamics
+ * - Random delays and weights
+ *
+ * Performance:
+ * ------------
+ * - Highly parallel on GPU
+ * - Efficient memory bandwidth usage
+ * - Scalable to large populations
+ *
+ * @see distribution.h Distribution interface and classes
+ * @see curand.h CUDA random number library
+ */
+
 #include "cuda_error.h"
 #include "distribution.h"
 #include "ngpu_exception.h"

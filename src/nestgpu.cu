@@ -20,6 +20,73 @@
  *
  */
 
+/**
+ * @file nestgpu.cu
+ * @brief Core implementation of NEST GPU simulation engine
+ *
+ * This file contains the main implementation of the NESTGPU class methods
+ * and GPU kernels for neural network simulation. It serves as the bridge
+ * between the Python interface and the GPU-accelerated simulation backend.
+ *
+ * Architecture Overview:
+ * The implementation follows a layered architecture:
+ * - Python Interface Layer: C bindings for Python access
+ * - C++ Class Layer: NESTGPU class with simulation management
+ * - GPU Kernel Layer: CUDA kernels for parallel computation
+ * - Memory Management: GPU memory allocation and data transfer
+ *
+ * Core Responsibilities:
+ * - Network initialization and calibration
+ * - Neuron model instantiation and parameter management
+ * - Connection creation and management
+ * - Spike communication between neurons
+ * - Simulation step execution
+ * - Data recording and retrieval
+ * - MPI support for distributed computing
+ *
+ * GPU Kernel Organization:
+ * - Neuron state update kernels
+ * - Spike delivery and buffering
+ * - Synaptic current integration
+ * - Random number generation
+ * - Connection lookup and traversal
+ *
+ * Memory Management:
+ * - Device memory allocation for neural state
+ * - Host-device data transfer optimization
+ * - Memory pool management for efficiency
+ * - Automatic memory cleanup
+ *
+ * Performance Optimization:
+ * - Coalesced memory access patterns
+ * - Shared memory usage for frequently accessed data
+ * - Asynchronous memory transfers
+ * - Efficient spike buffer algorithms
+ *
+ * Threading Strategy:
+ * - One thread per neuron for state updates
+ * - Block-based parallel processing for connections
+ * - Warp-level primitives for reduction operations
+ * - Grid-stride loops for large arrays
+ *
+ * Integration Points:
+ * - Python bindings: C interface for API access
+ * - CUDA runtime: GPU kernel launches and memory management
+ * - MPI: Distributed simulation support
+ * - cuRAND: Random number generation
+ * - File I/O: Data recording and parameter loading
+ *
+ * Error Handling:
+ * - Exception-based error reporting
+ * - CUDA error checking and propagation
+ * - MPI error handling
+ * - Memory allocation failure handling
+ *
+ * @see nestgpu.h Interface definitions
+ * @see base_neuron.h Base neuron class
+ * @see connect.h Connection management
+ */
+
 #include <algorithm>
 #include <cmath>
 #include <config.h>
@@ -212,7 +279,6 @@ NESTGPU::NESTGPU()
 
   calibrate_flag_ = false;
   create_flag_ = false;
-
   cuda_error_ns::mem_used_ = 0;
   cuda_error_ns::mem_max_ = 0;
   cuda_error_ns::alloc_time_ = 0;
@@ -785,7 +851,7 @@ NESTGPU::SimulationStep()
 
   for ( unsigned int i = 0; i < node_vect_.size(); i++ )
   {
-    node_vect_[ i ]->Update( it_, neural_time_ );
+    node_vect_[ i ]->Update( time_idx, neural_time_ );
   }
   DBGCUDASYNC;
 

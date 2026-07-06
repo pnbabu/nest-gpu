@@ -20,6 +20,78 @@
  *
  */
 
+/**
+ * @file get_spike.cu
+ * @brief Spike retrieval and extraction interface for NEST GPU
+ *
+ * This file implements the spike retrieval system that extracts spike
+ * information from neuron models for delivery to target neurons. It's
+ * a critical interface between neuron dynamics and spike delivery.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The spike retrieval system:
+ * - Extracts spike information from neuron state
+ * - Formats spikes for delivery
+ * - Handles multi-port spike emission
+ * - Manages spike multiplicity
+ *
+ * Key Functions:
+ * --------------
+ * - GetSpikes: Extract spike data from neurons
+ * - Format spike information for delivery
+ * - Handle multi-port spike emission
+ * - Support spike multiplicity and weights
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernels for parallel spike retrieval:
+ * - Parallel access to neuron states
+ * - Efficient spike detection
+ * - Coalesced memory patterns
+ * - Minimized thread divergence
+ *
+ * Spike Information:
+ * ------------------
+ * Retrieved data includes:
+ * - Source neuron ID
+ * - Spike timing information
+ * - Port information (receptor type)
+ * - Spike multiplicity
+ * - Synaptic weight references
+ *
+ * Integration Points:
+ * ------------------
+ * - BaseNeuron: Access to neuron spike data
+ * - Spike buffer: Store retrieved spikes
+ * - Send spike: Interface for spike delivery
+ * - Connect: Route spikes to targets
+ *
+ * Performance:
+ * ------------
+ * - Optimized for parallel retrieval
+ * - Efficient memory access
+ * - Minimal overhead
+ * - Scalable to large populations
+ *
+ * Thread Safety:
+ * --------------
+ * - Thread-safe spike retrieval
+ * - Concurrent neuron access
+ * - Atomic spike operations
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Neuron models emit spikes
+ * 2. GetSpikes extracts spike information
+ * 3. Spikes placed in delivery buffers
+ * 4. System routes spikes to targets
+ *
+ * @see get_spike.h Spike retrieval interface
+ * @see spike_buffer.h Spike storage
+ * @see send_spike.h Spike delivery
+ */
+
 #include <config.h>
 #include <stdio.h>
 

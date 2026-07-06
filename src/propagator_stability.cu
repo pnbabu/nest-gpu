@@ -20,6 +20,69 @@
  *
  */
 
+/**
+ * @file propagator_stability.cpp
+ * @brief Numerical stability functions for exact integration of linear ODEs
+ *
+ * This file implements numerically stable propagator functions for exact
+ * integration of linear ordinary differential equations, particularly
+ * for synaptic dynamics in neuron models.
+ *
+ * Mathematical Foundation:
+ * -----------------------
+ * Exact integration of linear ODEs using propagator matrices:
+ * \[ \frac{dx}{dt} = -\frac{x}{\tau} + f(t) \]
+ *
+ * The propagator method provides exact solutions:
+ * \[ x(t+h) = P_{32} x(t) + \text{particular solution} \]
+ *
+ * Key Functions:
+ * -------------
+ * - propagator_32: Stable P32 propagator computation
+ * - Handles near-singular cases
+ * - Numerical stability for parameter limits
+ *
+ * Numerical Stability:
+ * --------------------
+ * The implementation handles:
+ * - Singular case: tau_syn = tau
+ * - Near-singular cases: |tau_syn - tau| < 0.1
+ * - Linear approximation for stability
+ * - Exponential computation with expm1()
+ *
+ * Integration Method:
+ * ------------------
+ * Exact integration benefits:
+ * - No numerical error from time stepping
+ * - Exact for time-invariant parameters
+ * - Large timesteps possible
+ * - High efficiency
+ *
+ * GPU Implementation:
+ * ------------------
+ * Device-side computation:
+ * - Available in CUDA kernels
+ * - Used by neuron update functions
+ * - Numerically stable on GPU
+ *
+ * Applications:
+ * -------------
+ * - IAF_PSC_EXP neuron model
+ * - Synaptic dynamics integration
+ * - Linear ODE systems
+ * - Propagation of synaptic currents
+ *
+ * Scientific Background:
+ * ----------------------
+ * Based on exact integration methods:
+ * - Rotter & Diesmann (1999): Exact digital simulation
+ * - Klinshov et al. (2014): Stability analysis
+ * - Sets of analytic propagators
+ *
+ * @see propagator_stability.h Stability interface
+ * @see iaf_psc_exp.cu Application example
+ */
+
 #include "propagator_stability.h"
 
 // C++ includes:

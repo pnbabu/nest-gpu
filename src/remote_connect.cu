@@ -1,3 +1,117 @@
+/*
+ *  remote_connect.cu
+ *
+ *  This file is part of NEST GPU.
+ *
+ *  Copyright (C) 2021 The NEST Initiative
+ *
+ *  NEST GPU is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  NEST GPU is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with NEST GPU.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+/**
+ * @file remote_connect.cu
+ * @brief Remote connectivity management for distributed NEST GPU simulations
+ *
+ * This file manages connections between neurons located on different MPI
+ * processes in distributed simulations. It handles the mapping between
+ * remote and local neuron indices for efficient cross-node communication.
+ *
+ * Architecture Overview:
+ * ---------------------
+ * The remote connection system manages distributed connectivity:
+ * - Mapping between remote and local neuron IDs
+ * - Efficient spike routing across processes
+ * - Minimized communication overhead
+ * - Scalable to multi-GPU and multi-node systems
+ *
+ * Mapping Structures:
+ * ------------------
+ * Remote source to local image:
+ * - remote_source_node_map: Maps remote sources to local images
+ * - n_remote_source_node_map: Count per source host
+ * - Enables efficient remote spike delivery
+ *
+ * Local source to remote image:
+ * - local_source_node_map: Maps local sources to remote images
+ * - n_local_source_node_map: Count per target host
+ * - Enables efficient local spike emission
+ *
+ * Key Device Variables:
+ * ---------------------
+ * - node_map_block_size: Block allocation size for maps
+ * - remote_source_node_map: 4D array for remote source mapping
+ * - local_image_node_map: 4D array for local image mapping
+ * - local_source_node_map: 3D array for local source mapping
+ * - n_local_nodes: Number of local nodes
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA-accelerated remote connectivity:
+ * - Efficient mapping lookups
+ * - Coalesced memory access patterns
+ * - Optimized for cross-process communication
+ * - Minimal CPU intervention
+ *
+ * Communication Strategy:
+ * -----------------------
+ * 1. Establish neuron ID mappings across processes
+ * 2. Buffer spikes for remote destinations
+ * 3. Efficient communication via MPI
+ * 4. Deliver remote spikes to local targets
+ * 5. Maintain consistency across distributed system
+ *
+ * Integration Points:
+ * ------------------
+ * - MPI communication: Cross-process spike delivery
+ * - Connect: Distributed connection creation
+ * - Spike buffers: Remote spike routing
+ * - NESTGPU: Distributed simulation coordination
+ *
+ * Performance:
+ * ------------
+ * - Minimized inter-process communication
+ * - Efficient mapping lookups
+ * - Scalable to large distributed systems
+ * - Optimized for multi-GPU architectures
+ *
+ * Thread Safety:
+ * --------------
+ * - Thread-safe mapping operations
+ * - Concurrent remote communication
+ * - Distributed state consistency
+ *
+ * Usage Pattern:
+ * --------------
+ * 1. Initialize distributed simulation
+ * 2. Create cross-process connections
+ * 3. System establishes neuron mappings
+ * 4. During simulation, route remote spikes
+ * 5. Maintain mapping consistency
+ *
+ * Scientific Background:
+ * ----------------------
+ * Distributed neural networks enable:
+ * - Larger network simulations
+ * - Multi-GPU acceleration
+ * - Multi-node cluster computing
+ * - Scalable brain modeling
+ *
+ * @see remote_connect.h Remote connectivity interface
+ * @see mpi_comm.h MPI communication layer
+ * @see nestgpu.h Main simulation engine
+ */
 
 #include <iostream>
 #include <vector>

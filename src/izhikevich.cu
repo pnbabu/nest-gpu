@@ -20,6 +20,108 @@
  *
  */
 
+/**
+ * @file izhikevich.cu
+ * @brief Izhikevich neuron model implementation
+ *
+ * This file implements the Izhikevich neuron model, a simple
+ * spiking neuron model that can reproduce various firing patterns
+ * while remaining computationally efficient.
+ *
+ * Mathematical Model:
+ * -------------------
+ * The Izhikevich model consists of two differential equations:
+ *
+ * \[ \frac{dV}{dt} = 0.04V^2 + 5V + 140 - u + I \]
+ * \[ \frac{du}{dt} = a(bV - u) \]
+ *
+ * After-spike reset:
+ * \[ \text{if } V \geq 30 \text{ mV:} \]
+ * \[ V \leftarrow c, \quad u \leftarrow u + d \]
+ *
+ * Where:
+ * - V: Membrane potential (mV)
+ * - u: Recovery variable (represents membrane potential recovery)
+ * - I: Synaptic input current
+ * - a, b, c, d: Model parameters
+ *
+ * Key Features:
+ * -------------
+ * - Computationally efficient (simple quadratic equation)
+ * - Can reproduce various firing patterns:
+ *   - Regular spiking (RS)
+ *   - Intrinsically bursting (IB)
+ *   - Chattering (CH)
+ *   - Fast spiking (FS)
+ *   - Thalamo-cortical (TC)
+ *   - Resonator (RZ)
+ *   - Low-threshold spiking (LTS)
+ *
+ * Parameter Regimes:
+ * -----------------
+ * Different firing patterns achieved with parameter sets:
+ * - Regular spiking: (a,b,c,d) = (0.02, 0.2, -65, 8)
+ * - Intrinsically bursting: (a,b,c,d) = (0.02, 0.2, -55, 4)
+ * - Fast spiking: (a,b,c,d) = (0.1, 0.2, -65, 2)
+ *
+ * GPU Implementation:
+ * ------------------
+ * CUDA kernel for parallel updates:
+ * - Each thread updates one neuron
+ * - Coalesced memory access patterns
+ * - Efficient spike detection
+ * - Minimal thread divergence
+ *
+ * State Variables:
+ * ----------------
+ * - V_m: Membrane potential (mV)
+ * - u: Recovery variable
+ * - I_syn: Synaptic current
+ * - refractory_step: Refractory counter
+ *
+ * Model Parameters:
+ * ----------------
+ * - V_th: Spike threshold (typically 30 mV)
+ * - a: Time scale of recovery variable
+ * - b: Sensitivity of recovery variable
+ * - c: After-spike reset value for V
+ * - d: After-spike reset value for u
+ * - t_ref: Refractory period (ms)
+ * - I_e: External input current
+ *
+ * Integration Method:
+ * ------------------
+ * Uses Euler method with small time steps:
+ * - Simple and fast
+ * - Sufficient for this model
+ * - GPU-friendly implementation
+ *
+ * Performance:
+ * ------------
+ * - Very fast due to simple equations
+ * - Scales efficiently to large populations
+ * - Minimal computational overhead
+ *
+ * Integration Points:
+ * ------------------
+ * - Connect: Current-based synaptic inputs
+ * - Spike buffer: Output spike delivery
+ * - Recording: Compatible with multimeter
+ *
+ * Scientific Background:
+ * ----------------------
+ * Based on Izhikevich (2003):
+ * "Simple Model of Spiking Neurons"
+ * IEEE Transactions on Neural Networks, 14(6):1569-1572
+ *
+ * The model was designed to balance biological realism
+ * with computational efficiency, making it ideal for
+ * large-scale network simulations.
+ *
+ * @see izhikevich.h Model interface
+ * @see nestgpu.h Main simulation engine
+ */
+
 #include "izhikevich.h"
 #include "spike_buffer.h"
 #include <cmath>
