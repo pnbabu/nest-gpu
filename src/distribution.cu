@@ -35,7 +35,8 @@ randomNormalClippedKernel( float* arr,
   float low,
   float high,
   double normal_cdf_alpha,
-  double normal_cdf_beta )
+  double normal_cdf_beta,
+  bool is_log )
 {
   const double epsilon = 1.0e-15;
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -48,7 +49,11 @@ randomNormalClippedKernel( float* arr,
   double v = p * 2.0 - 1.0;
   v = max( v, epsilon - 1.0 );
   v = min( v, -epsilon + 1.0 );
+
   double x = ( double ) sigma * sqrt( 2.0 ) * erfinv( v ) + mu;
+  if (is_log) {
+    x = exp(x);
+  }
   x = max( x, low );
   x = min( x, high );
   arr[ tid ] = ( float ) x;
@@ -61,10 +66,19 @@ normalCDF( double value )
 }
 
 int
-randomNormalClipped( float* arr, int64_t n, float mu, float sigma, float low, float high )
+randomNormalClipped( float* arr, int64_t n, float mu, float sigma, float low, float high, bool is_log = false )
 {
-  double alpha = ( ( double ) low - mu ) / sigma;
-  double beta = ( ( double ) high - mu ) / sigma;
+  double alpha_val = (double)low;
+  double beta_val = (double)high;
+
+  if (is_log) {
+    // If lognormal, the underlying normal is clipped at log(low) and log(high)
+    alpha_val = (low > 0) ? log((double)low) : -1e38; 
+    beta_val = log((double)high);
+  }
+
+  double alpha = ( alpha_val - mu ) / sigma;
+  double beta = ( beta_val - mu ) / sigma;
   double normal_cdf_alpha = normalCDF( alpha );
   double normal_cdf_beta = normalCDF( beta );
 
@@ -72,7 +86,7 @@ randomNormalClipped( float* arr, int64_t n, float mu, float sigma, float low, fl
   //	 mu, sigma, low, high, n);
   // n = 10000;
   randomNormalClippedKernel<<< ( n + 1023 ) / 1024, 1024 >>>(
-    arr, n, mu, sigma, low, high, normal_cdf_alpha, normal_cdf_beta );
+    arr, n, mu, sigma, low, high, normal_cdf_alpha, normal_cdf_beta, is_log );
   DBGCUDASYNC
   // temporary test, remove!!!!!!!!!!!!!
   // gpuErrchk( cudaDeviceSynchronize() );
@@ -142,14 +156,19 @@ Distribution::getArray( curandGenerator_t& gen, int64_t n_elem, int i_vect )
   else if ( distr_idx_ == DISTR_TYPE_NORMAL_CLIPPED )
   {
     CURAND_CALL( curandGenerateUniform( gen, d_array_pt_, n_elem ) );
-    randomNormalClipped( d_array_pt_, n_elem, mu_[ i_vect ], sigma_[ i_vect ], low_[ i_vect ], high_[ i_vect ] );
+    randomNormalClipped( d_array_pt_, n_elem, mu_[ i_vect ], sigma_[ i_vect ], low_[ i_vect ], high_[ i_vect ], false );
   }
   else if ( distr_idx_ == DISTR_TYPE_NORMAL )
   {
     float low = mu_[ i_vect ] - 5.0 * sigma_[ i_vect ];
     float high = mu_[ i_vect ] + 5.0 * sigma_[ i_vect ];
     CURAND_CALL( curandGenerateUniform( gen, d_array_pt_, n_elem ) );
-    randomNormalClipped( d_array_pt_, n_elem, mu_[ i_vect ], sigma_[ i_vect ], low, high );
+    randomNormalClipped( d_array_pt_, n_elem, mu_[ i_vect ], sigma_[ i_vect ], low, high, false );
+  }
+  else if ( distr_idx_ == DISTR_TYPE_LOGNORMAL_CLIPPED )
+  {
+    CURAND_CALL( curandGenerateUniform( gen, d_array_pt_, n_elem ) );
+    randomNormalClipped( d_array_pt_, n_elem, mu_[ i_vect ], sigma_[ i_vect ], low_[ i_vect ], high_[ i_vect ], true );
   }
   return d_array_pt_;
 }

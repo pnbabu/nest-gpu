@@ -2957,14 +2957,20 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::setConnectionWeights( curandGenerat
         syn_spec.weight_mu_,
         syn_spec.weight_sigma_,
         syn_spec.weight_low_,
-        syn_spec.weight_high_ );
+        syn_spec.weight_high_,
+        false );
     }
     else if ( syn_spec.weight_distr_ == DISTR_TYPE_NORMAL )
     {
       float low = syn_spec.weight_mu_ - 5.0 * syn_spec.weight_sigma_;
       float high = syn_spec.weight_mu_ + 5.0 * syn_spec.weight_sigma_;
       CURAND_CALL( curandGenerateUniform( gen, ( float* ) d_storage, n_conn ) );
-      randomNormalClipped( ( float* ) d_storage, n_conn, syn_spec.weight_mu_, syn_spec.weight_sigma_, low, high );
+      randomNormalClipped( ( float* ) d_storage, n_conn, syn_spec.weight_mu_, syn_spec.weight_sigma_, low, high, false );
+    }
+    else if ( syn_spec.weight_distr_ == DISTR_TYPE_LOGNORMAL_CLIPPED )
+    {
+      CURAND_CALL( curandGenerateUniform( gen, ( float* ) d_storage, n_conn ) );
+      randomNormalClipped( ( float* ) d_storage, n_conn, syn_spec.weight_mu_, syn_spec.weight_sigma_, syn_spec.weight_low_, syn_spec.weight_high_, true );
     }
     else
     {
@@ -3009,7 +3015,8 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::setConnectionDelays( curandGenerato
         syn_spec.delay_mu_,
         syn_spec.delay_sigma_,
         syn_spec.delay_low_,
-        syn_spec.delay_high_ );
+        syn_spec.delay_high_,
+        false );
     }
     else if ( syn_spec.delay_distr_ == DISTR_TYPE_NORMAL )
     {
@@ -3021,7 +3028,19 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::setConnectionDelays( curandGenerato
         syn_spec.delay_mu_,
         syn_spec.delay_sigma_,
         syn_spec.delay_low_,
-        syn_spec.delay_high_ );
+        syn_spec.delay_high_,
+        false );
+    }
+    else if ( syn_spec.delay_distr_ == DISTR_TYPE_LOGNORMAL_CLIPPED )
+    {
+      CURAND_CALL( curandGenerateUniform( gen, ( float* ) d_storage, n_conn ) );
+      randomNormalClipped( ( float* ) d_storage,
+        n_conn,
+        syn_spec.delay_mu_,
+        syn_spec.delay_sigma_,
+        syn_spec.delay_low_,
+        syn_spec.delay_high_,
+        true );
     }
     else
     {

@@ -69,9 +69,10 @@ enum DistributionType
   DISTR_TYPE_ARRAY,
   DISTR_TYPE_NORMAL,
   DISTR_TYPE_NORMAL_CLIPPED,
+  DISTR_TYPE_LOGNORMAL_CLIPPED,
   N_DISTR_TYPE
 };
 
-int randomNormalClipped( float* arr, int64_t n, float mu, float sigma, float low, float high );
+int randomNormalClipped( float* arr, int64_t n, float mu, float sigma, float low, float high, bool is_log );
 
 #endif

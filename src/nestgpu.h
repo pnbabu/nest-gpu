@@ -688,6 +688,8 @@ public:
 
   float* RandomNormal( size_t n, float mean, float stddev );
 
+  float* RandomLognormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep );
+
   float* RandomNormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep );
 
   int Connect( inode_t i_source,

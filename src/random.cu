@@ -70,3 +70,28 @@ curand_normal( curandGenerator_t& gen, size_t n, float mean, float stddev )
 
   return host_data;
 }
+
+
+float*
+curand_log_normal( curandGenerator_t& gen, size_t n, float mean, float stddev)
+{
+  size_t n1 = ( ( n % 2 ) == 0 ) ? n : n + 1; // round up to multiple of 2
+  float* dev_data;
+  // Allocate n floats on host
+  float* host_data = new float[ n ];
+
+  // Allocate n1 floats on device
+  CUDAMALLOCCTRL( "&dev_data", ( void** ) &dev_data, n1 * sizeof( float ) );
+
+  // Generate n1 integers on device
+  // printf("curandGenerateNormal n1: %d\tmean: %f\tstd: %f\n", (int)n1, mean,
+  //	 stddev);
+  CURAND_CALL( curandGenerateLogNormal( gen, dev_data, n1, mean, stddev ) );
+  // cudaDeviceSynchronize();
+  //  Copy device memory to host
+  CUDA_CALL( cudaMemcpy( host_data, dev_data, n * sizeof( float ), cudaMemcpyDeviceToHost ) );
+  // Cleanup
+  CUDAFREECTRL( "dev_data", dev_data );
+
+  return host_data;
+}

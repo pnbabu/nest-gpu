@@ -1592,6 +1592,54 @@ NESTGPU::RandomNormal( size_t n, float mean, float stddev )
 }
 
 float*
+NESTGPU::RandomLognormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep )
+{
+  const float epsi = 1.0e-6;
+
+  n = ( n / 4 + 1 ) * 4;
+  int n_extra = n / 10;
+  n_extra = ( n_extra / 4 + 1 ) * 4;
+  if ( n_extra < 1024 )
+  {
+    n_extra = 1024;
+  }
+  int i_extra = 0;
+  float* arr = curand_log_normal( *random_generator_, n, mean, stddev );
+  float* arr_extra = nullptr;
+  for ( size_t i = 0; i < n; i++ )
+  {
+    while ( arr[ i ] < vmin || arr[ i ] > vmax )
+    {
+      if ( i_extra == 0 )
+      {
+        arr_extra = curand_log_normal( *random_generator_, n_extra, mean, stddev );
+      }
+      arr[ i ] = arr_extra[ i_extra ];
+      i_extra++;
+      if ( i_extra == n_extra )
+      {
+        i_extra = 0;
+        delete[] ( arr_extra );
+        arr_extra = nullptr;
+      }
+    }
+  }
+  if ( arr_extra != nullptr )
+  {
+    delete[] ( arr_extra );
+  }
+  if ( vstep > stddev * epsi )
+  {
+    for ( size_t i = 0; i < n; i++ )
+    {
+      arr[ i ] = vmin + vstep * round( ( arr[ i ] - vmin ) / vstep );
+    }
+  }
+
+  return arr;
+}
+
+float*
 NESTGPU::RandomNormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep )
 {
   const float epsi = 1.0e-6;

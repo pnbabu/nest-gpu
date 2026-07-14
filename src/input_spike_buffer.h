@@ -816,6 +816,11 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::sendDirectSpikes( long long time_id
   void* d_poiss_key_array,
   curandState* d_curand_state )
 {
+  if (n_dir_conn == 0)
+  {
+    return 0;
+  }
+
   unsigned int grid_dim_x, grid_dim_y;
 
   if ( n_dir_conn < 65536 * 1024 )

@@ -132,6 +132,13 @@ poiss_gen::SendDirectSpikes( long long time_idx )
 int
 poiss_gen::Calibrate( double, float )
 {
+  // if the device is not connected to any other node, the calibration continues without rising errors
+  if ( n_dir_conn_ == 0 )
+  {
+    std::cout << "Warning: Poisson generator devices created but not used.\n";
+    return 0; 
+  }
+
   CUDAMALLOCCTRL( "&d_curand_state_", &d_curand_state_, n_dir_conn_ * sizeof( curandState ) );
 
   unsigned int grid_dim_x, grid_dim_y;

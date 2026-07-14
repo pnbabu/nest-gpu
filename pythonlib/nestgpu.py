@@ -91,7 +91,8 @@ distribution_dict = {
     "none": 0,
     "array": 1,
     "normal": 2,
-    "normal_clipped": 3
+    "normal_clipped": 3,
+    "lognormal_clipped": 4
 }
 
 # the following must match the enum NestedLoopAlgo in nested_loop.h
@@ -1710,6 +1711,18 @@ def RandomNormal(n, mean, stddev):
     return ret
 
 
+NESTGPU_RandomLognormalClipped = _nestgpu.NESTGPU_RandomLognormalClipped
+NESTGPU_RandomLognormalClipped.argtypes = (ctypes.c_size_t, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float)
+NESTGPU_RandomLognormalClipped.restype = c_float_p
+def RandomLognormalClipped(n, mean, stddev, vmin, vmax, vstep):
+    "Generate n random floats with lognormal distribution in CUDA memory"
+    ret = NESTGPU_RandomLognormalClipped(ctypes.c_size_t(n), ctypes.c_float(mean),
+                                 ctypes.c_float(stddev), ctypes.c_float(vmin), ctypes.c_float(vmax), ctypes.c_float(vstep))
+    if GetErrorCode() != 0:
+        raise ValueError(GetErrorMessage())
+    return ret
+
+
 NESTGPU_RandomNormalClipped = _nestgpu.NESTGPU_RandomNormalClipped
 NESTGPU_RandomNormalClipped.argtypes = (ctypes.c_size_t, ctypes.c_float, ctypes.c_float, ctypes.c_float,
                                           ctypes.c_float, ctypes.c_float)
@@ -1885,6 +1898,8 @@ def DictToArray(param_dict, array_size):
         return RandomNormal(array_size, mu, sigma)
     elif dist_name=="normal_clipped":
         return RandomNormalClipped(array_size, mu, sigma, low, high, vstep)
+    elif dist_name=="lognormal_clipped":
+        return RandomLognormalClipped(array_size, mu, sigma, low, high, vstep)
     else:
         raise ValueError("Unknown distribution")
 

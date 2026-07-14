@@ -176,6 +176,8 @@ extern "C"
 
   float* NESTGPU_RandomNormal( size_t n, float mean, float stddev );
 
+  float* NESTGPU_RandomLognormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep);
+
   float* NESTGPU_RandomNormalClipped( size_t n, float mean, float stddev, float vmin, float vmax, float vstep );
 
   int NESTGPU_ConnSpecInit();
