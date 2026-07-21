@@ -325,7 +325,7 @@ deliverSpikesKernel( int64_t n_conn )
     int i_port = getConnPort< ConnKeyT, ConnStructT >( conn_key, conn_struct );
     float weight = conn_struct.weight;
     int n_slots = max_input_delay_[ i_target ][ i_port ];
-    int i_slot = ( NESTGPUTimeIdx + i_delay ) % n_slots;
+    int i_slot = ( NESTGPUTimeIdx + i_delay - 1) % n_slots;
     atomicAdd( &input_spike_buffer_[ i_target ][ i_port ][ i_slot ], weight * mul );
     //printf("i_spike: %d\ti_conn0: %lld\ti_target: %d\ti_port: %d\ti_slot: %d\tweight: %f\tmul: %f\n",
     //i_spike, i_conn0, i_target, i_port, i_slot, weight, mul );

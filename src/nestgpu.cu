@@ -648,7 +648,7 @@ NESTGPU::StartSimulation()
   {
     gpuErrchk( cudaMemcpyToSymbolAsync( NESTGPUTime, &neur_t0_, sizeof( double ) ) );
     long long time_idx = ( int ) round( neur_t0_ / time_resolution_ );
-    multimeter_->WriteRecords( neur_t0_, time_idx );
+    //multimeter_->WriteRecords( neur_t0_, time_idx );
     //build_real_time_ = getRealTime(); moved at the end of Calibrate method
     first_simulation_flag_ = false;
   }
@@ -785,7 +785,7 @@ NESTGPU::SimulationStep()
 
   for ( unsigned int i = 0; i < node_vect_.size(); i++ )
   {
-    node_vect_[ i ]->Update( it_, neural_time_ );
+    node_vect_[ i ]->Update( time_idx, neural_time_ );
   }
   DBGCUDASYNC;
 

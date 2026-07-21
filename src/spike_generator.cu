@@ -279,7 +279,7 @@ spike_generator::SetSpikes( int irel_node,
   int* spike_time_idx = new int[ n_spikes ];
   for ( int i = 0; i < n_spikes; i++ )
   {
-    spike_time_idx[ i ] = ( int ) round( ( spike_time[ i ] - time_min ) / time_resolution );
+    spike_time_idx[ i ] = ( int ) round( ( spike_time[ i ] - time_min ) / time_resolution ) - 1;
     if ( i > 0 && spike_time_idx[ i ] <= spike_time_idx[ i - 1 ] )
     {
       throw ngpu_exception(
