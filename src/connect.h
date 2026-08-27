@@ -155,6 +155,12 @@ public:
 
   virtual uint* getDevRevSpikeNumPt() = 0;
 
+  virtual float* GetDevConnStatePt() = 0;
+  
+  virtual int GetNConnStateVars()  = 0;
+
+  virtual void SetNConnStateVars(int n_state_vars) = 0;
+
   // get pt to array of number of reverse connections incoming to each node
   virtual int* getDevRevSpikeNConnPt() = 0;
 
@@ -694,7 +700,12 @@ class ConnectionTemplate : public Connection
 
   bool spike_time_flag_;
 
+  bool syn_state_vars_flag;
+
   unsigned short* d_conn_spike_time_; // [n_conn_];
+
+  int n_conn_state_vars_;  // Total state vars across all models
+  float* d_conn_state_;  // Flat array: [n_conn * n_conn_state_vars_]
 
   int64_t n_rev_conn_;
 
@@ -990,6 +1001,21 @@ public:
   getDevRevSpikeNumPt()
   {
     return d_rev_spike_num_;
+  }
+
+  float* GetDevConnStatePt() 
+  { 
+    return d_conn_state_; 
+  }
+  
+  int GetNConnStateVars() 
+  { 
+    return n_conn_state_vars_; 
+  }
+
+  void SetNConnStateVars(int n_state_vars) 
+  { 
+    n_conn_state_vars_ = n_state_vars; 
   }
 
   int*
@@ -2706,7 +2732,8 @@ __global__ void connectCalibrateKernel( iconngroup_t* conn_group_idx0,
   int64_t block_size,
   void* conn_key_array,
   void* conn_struct_array,
-  unsigned short* conn_spike_time );
+  unsigned short* conn_spike_time,
+  float* conn_state_vars );
 
 // template <class ConnKeyT, class ConnStructT>
 // ConnectionTemplate<ConnKeyT, ConnStructT>::ConnectionTemplate()
@@ -2802,6 +2829,10 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::init()
   spike_time_flag_ = false;
   d_conn_spike_time_ = nullptr;
 
+  // synaptic state vars
+  syn_state_vars_flag = false;
+  d_conn_state_ = nullptr;
+
   n_rev_conn_ = 0;
   d_rev_spike_num_ = nullptr;
   d_rev_spike_target_ = nullptr;
@@ -2886,13 +2917,19 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::calibrate()
     CUDAMALLOCCTRL( "&d_conn_spike_time_", &d_conn_spike_time_, n_conn_ * sizeof( unsigned short ) );
   }
 
+  if (syn_state_vars_flag && n_conn_state_vars_ > 0)
+  {
+    CUDAMALLOCCTRL( "&d_conn_state_", &d_conn_state_, n_conn_ * n_conn_state_vars_ * sizeof( float ) );
+  }
+
   connectCalibrateKernel<<< 1, 1 >>>( d_conn_group_idx0_,
     d_conn_group_iconn0_,
     d_conn_group_delay_,
     conn_block_size_,
     d_conn_key_array_,
     d_conn_struct_array_,
-    d_conn_spike_time_ );
+    d_conn_spike_time_,
+    d_conn_state_ );
   DBGCUDASYNC;
 
   return 0;
@@ -3405,6 +3442,8 @@ ConnectionTemplate< ConnKeyT, ConnStructT >::_Connect( curandGenerator_t& gen,
     //exit(-1);
     spike_time_flag_ = true;
     rev_conn_flag_ = true;
+
+    syn_state_vars_flag = true;
   }
 
   switch ( conn_spec.rule_ )

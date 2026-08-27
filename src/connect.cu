@@ -127,6 +127,8 @@ __device__ void* ConnStructArray;
 
 __device__ unsigned short* ConnectionSpikeTime;
 
+__device__ float* ConnectionStateVars;
+
 const std::string ConnectionFloatParamName[ N_CONN_FLOAT_PARAM ] = { "weight", "delay" };
 
 const std::string ConnectionIntParamName[ N_CONN_INT_PARAM ] = { "source", "target", "port", "syn_group" };
@@ -174,7 +176,8 @@ connectCalibrateKernel( iconngroup_t* conn_group_idx0,
   int64_t block_size,
   void* conn_key_array,
   void* conn_struct_array,
-  unsigned short* conn_spike_time )
+  unsigned short* conn_spike_time,
+  float* conn_state_vars )
 {
   ConnGroupIdx0 = conn_group_idx0;
   ConnGroupIConn0 = conn_group_iconn0;
@@ -183,6 +186,7 @@ connectCalibrateKernel( iconngroup_t* conn_group_idx0,
   ConnKeyArray = conn_key_array;
   ConnStructArray = conn_struct_array;
   ConnectionSpikeTime = conn_spike_time;
+  ConnectionStateVars = conn_state_vars;
 }
 
 __global__ void

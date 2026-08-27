@@ -24,6 +24,7 @@
 #define SYNMODEL_H
 
 #include "stdp.h"
+#include "stdp_synapse.h"
 #include <string>
 #include <vector>
 
@@ -39,26 +40,55 @@ enum SynModels
   i_null_syn_model = 0,
   i_test_syn_model,
   i_stdp_model,
+  i_stdp_synapse_model,
   N_SYN_MODELS
 };
 
 __device__ __forceinline__ void
-SynapseUpdate( int syn_group, float* w, float Dt )
+SynapseUpdate( int syn_group, float* w, float Dt, int i_conn )
 {
   int syn_type = SynGroupTypeMap[ syn_group - 1 ];
   float* param = SynGroupParamMap[ syn_group - 1 ];
   switch ( syn_type )
   {
-  case i_test_syn_model:
-    TestSynModelUpdate( w, Dt, param );
-    break;
-  case i_stdp_model:
-    stdp_ns::STDPUpdate( w, Dt, param );
+  // case i_test_syn_model:
+  //   TestSynModelUpdate( w, Dt, param );
+  //   break;
+  // case i_stdp_model:
+  //   stdp_ns::STDPUpdate( w, Dt, param );
+  //   break;
+  case i_stdp_synapse_model:
+    stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
     break;
   }
 }
 
-const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp" };
+__device__ __forceinline__ void
+SynapsePreTraceUpdate( int syn_group, int i_conn )
+{
+  int syn_type = SynGroupTypeMap[syn_group - 1];
+  switch(syn_type)
+  {
+    case i_stdp_synapse_model:
+      stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
+      break;
+  }
+}
+
+__device__ __forceinline__ void
+SynapsePostTraceUpdate( int syn_group, int i_conn )
+{
+  int syn_type = SynGroupTypeMap[syn_group - 1];
+  switch(syn_type)
+  {
+    case i_stdp_synapse_model:
+      stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
+      break;
+  }
+}
+
+
+const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp", "stdp_synapse" };
 
 class SynModel
 {
@@ -67,6 +97,12 @@ protected:
   int n_param_;
   const std::string* param_name_;
   float* d_param_arr_;
+
+  // State vars
+  int n_state_vars_;
+  const std::string* state_name_;
+  // int n_conn_;  // Number of connections
+  // float* d_conn_state_;  // Flat array: [n_conn_ * n_state_vars_]
 
 public:
   virtual int
@@ -81,6 +117,13 @@ public:
   virtual float GetParam( std::string param_name );
   virtual int SetParam( std::string param_name, float val );
 
+  // State vars
+  int GetNState();
+  std::vector< std::string > GetStateNames();
+  bool IsState( std::string param_name );
+  int GetStateIdx( std::string param_name );
+
+
   friend class NESTGPU;
 };
 
@@ -90,6 +133,23 @@ class STDP : public SynModel
 
 public:
   STDP()
+  {
+    _Init();
+  }
+
+  int
+  Init()
+  {
+    return _Init();
+  }
+};
+
+class STDPSynapse : public SynModel
+{
+  int _Init();
+
+public:
+  STDPSynapse()
   {
     _Init();
   }

@@ -83,16 +83,19 @@ NestedLoopFunction0( int i_spike, int i_syn )
     // ConnectionGroupTargetSpikeTime[i_conn*NSpikeBuffer+i_source][i_syn]
     ConnectionSpikeTime[ i_conn ] = ( unsigned short ) ( NESTGPUTimeIdx & 0xffff );
 
+    // Update presynaptic trace
+    SynapsePreTraceUpdate(syn_group, i_conn);
+
     long long Dt_int = NESTGPUTimeIdx - LastRevSpikeTimeIdx[ i_target ];
 
-    //    printf("spike src %d target %d weight %f syn_group %d "
-    //	   "TimeIdx %lld LRST %lld Dt %lld\n",
-    //	   i_source, i_target, weight, syn_group,
-    //	   NESTGPUTimeIdx, LastRevSpikeTimeIdx[i_target], Dt_int);
+    // printf("spike src %d target %d weight %f syn_group %d "
+    //   "TimeIdx %lld LRST %lld Dt %lld\n",
+    //   i_source, i_target, weight, syn_group,
+    //   NESTGPUTimeIdx, LastRevSpikeTimeIdx[i_target], Dt_int);
 
     if ( Dt_int > 0 && Dt_int < MAX_SYN_DT )
     {
-      SynapseUpdate( syn_group, &( conn_struct.weight ), -NESTGPUTimeResolution * Dt_int );
+      SynapseUpdate( syn_group, &( conn_struct.weight ), -NESTGPUTimeResolution * Dt_int, i_conn );
     }
   }
   ////////////////////////////////////////////////////////////////

@@ -24,6 +24,7 @@
 #include "nestgpu.h"
 #include "ngpu_exception.h"
 #include "stdp.h"
+#include "stdp_synapse.h"
 #include "syn_model.h"
 #include "test_syn_model.h"
 #include <config.h>
@@ -122,6 +123,65 @@ SynModel::SetParam( std::string param_name, float val )
   return 0;
 }
 
+// Functions for state variables
+int
+SynModel::GetNState()
+{
+  return n_state_vars_;
+}
+
+std::vector< std::string >
+SynModel::GetStateNames()
+{
+  std::vector< std::string > state_name_vect;
+  for ( int i = 0; i < n_param_; i++ )
+  {
+    state_name_vect.push_back( state_name_[ i ] );
+  }
+
+  return state_name_vect;
+}
+
+bool
+SynModel::IsState( std::string state_name )
+{
+  int i_state;
+  for ( i_state = 0; i_state < n_state_vars_; i_state++ )
+  {
+    if ( state_name == state_name_[ i_state ] )
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+int
+SynModel::GetStateIdx( std::string state_name )
+{
+  int i_state;
+  for ( i_state = 0; i_state < n_state_vars_; i_state++ )
+  {
+    if ( state_name == state_name_[ i_state ] )
+    {
+      break;
+    }
+  }
+  if ( i_state == n_state_vars_ )
+  {
+    throw ngpu_exception( std::string( "Unrecognized state variable " ) + state_name );
+  }
+
+  return i_state;
+}
+
+  // float*
+  // GetDevConnStatePt()
+  // {
+  //   return d_conn_state_;
+  // }
+
+
 int
 NESTGPU::CreateSynGroup( std::string model_name )
 {
@@ -135,6 +195,11 @@ NESTGPU::CreateSynGroup( std::string model_name )
   {
     STDP* stdp_group = new STDP;
     syn_group_vect_.push_back( stdp_group );
+  }
+  else if ( model_name == syn_model_name[ i_stdp_synapse_model ] )
+  {
+    STDPSynapse* stdp_synapse_group = new STDPSynapse;
+    syn_group_vect_.push_back( stdp_synapse_group );
   }
   else
   {
@@ -208,6 +273,23 @@ NESTGPU::SetSynGroupParam( int syn_group, std::string param_name, float val )
 
   return syn_group_vect_[ syn_group - 1 ]->SetParam( param_name, val );
 }
+
+int
+NESTGPU::GetMaxSynGroupNState()
+{
+  int n_group = syn_group_vect_.size();
+  int max_n_state = 0;
+
+  for (int syn_group = 1; syn_group <= n_group; syn_group++) {
+    int n_state = syn_group_vect_[syn_group - 1]->GetNState();
+    if (n_state > max_n_state) {
+      max_n_state = n_state;
+    }
+  }
+
+  return max_n_state;
+}
+
 
 int
 NESTGPU::SynGroupCalibrate()

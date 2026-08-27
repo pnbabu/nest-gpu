@@ -35,7 +35,7 @@ extern __constant__ long long NESTGPUTimeIdx;
 
 extern __constant__ float NESTGPUTimeResolution;
 
-extern __device__ void SynapseUpdate( int syn_group, float* w, float Dt );
+extern __device__ void SynapseUpdate( int syn_group, float* w, float Dt, int i_conn );
 
 __device__ unsigned int* RevSpikeNum;
 

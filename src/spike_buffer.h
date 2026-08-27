@@ -42,6 +42,16 @@ extern __device__ long long* LastRevSpikeTimeIdx; //
 extern unsigned short* d_ConnectionSpikeTime;          // [NConnection];
 extern __device__ unsigned short* ConnectionSpikeTime; //
 
+/* 
+  Variables for state vars in a Connection
+*/
+extern __device__ int NConnectionStateVars; // Number of state vars per Connection
+
+// Base array with all state variables for all Connections (flat array indexed by i_conn * n_state_vars + state_idx)
+extern float* d_ConnectionState;
+extern __device__ float* ConnectionStateVars;
+
+
 extern int* d_SpikeBufferSize;
 extern __device__ int* SpikeBufferSize;
 // number of spikes stored in the buffer

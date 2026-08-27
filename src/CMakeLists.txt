@@ -94,6 +94,7 @@ spike_generator.h
 remote_spike.h
 mpi_comm.h
 stdp.h
+stdp_synapse.h
 syn_model.h
 test_syn_model.h
 user_m1.h
@@ -154,6 +155,7 @@ spike_generator.cu
 remote_spike.cu
 mpi_comm.cu
 stdp.cu
+stdp_synapse.cu
 syn_model.cu
 test_syn_model.cu
 user_m1.cu

@@ -918,6 +918,8 @@ public:
 
   int SynGroupCalibrate();
 
+  int GetMaxSynGroupNState();  // Returns max state variables across all synapse groups
+
   int ActivateSpikeCount( int i_node, int n_node );
 
   int

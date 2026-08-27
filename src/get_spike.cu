@@ -57,6 +57,7 @@ __global__ void GetSpikes(double *spike_array, int array_size, int n_port,
   }
 }
 */
+extern __constant__ double NESTGPUTime;
 
 __global__ void
 GetSpikes( double* spike_array,

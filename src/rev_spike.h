@@ -82,14 +82,17 @@ NestedLoopFunction1( int i_spike, int i_target_rev_conn )
     unsigned short Dt_int = time_idx - spike_time_idx;
 
     // printf("rev spike target %d i_target_rev_conn %d "
-    //	   "i_conn %lld weight %f syn_group %d "
-    //	   "TimeIdx %lld CST %d Dt %d\n",
-    //	   target, i_target_rev_conn, i_conn, conn.weight, syn_group,
-    //	   NESTGPUTimeIdx, spike_time_idx, Dt_int);
+    // 	   "i_conn %lld weight %f syn_group %d "
+    // 	   "TimeIdx %lld CST %d Dt %d\n",
+    // 	   target, i_target_rev_conn, i_conn, conn_struct.weight, syn_group,
+    // 	   NESTGPUTimeIdx, spike_time_idx, Dt_int);
+    
+    // Update postsynaptic trace
+    SynapsePostTraceUpdate(syn_group, i_conn);
 
     if ( Dt_int < MAX_SYN_DT )
     {
-      SynapseUpdate( syn_group, &( conn_struct.weight ), NESTGPUTimeResolution * Dt_int );
+      SynapseUpdate( syn_group, &( conn_struct.weight ), NESTGPUTimeResolution * Dt_int, i_conn );
     }
   }
 }
