@@ -19,32 +19,14 @@
  *  along with NEST GPU.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#include <config.h>
+#ifdef HAVE_SYN_STATE_VARS
 #include "cuda_error.h"
 #include "ngpu_exception.h"
 #include "stdp_synapse.h"
 #include "syn_model.h"
-#include <config.h>
 #include <iostream>
 #include <stdio.h>
-
-
-// class STDPSynapse : public SynModel
-// {
-//   int _Init();
-
-// public:
-//   STDPSynapse()
-//   {
-//     _Init();
-//   }
-
-//   int
-//   Init()
-//   {
-//     return _Init();
-//   }
-// };
 
 using namespace stdp_synapse_ns;
 
@@ -71,3 +53,4 @@ STDPSynapse::_Init()
 
   return 0;
 }
+#endif

@@ -133,6 +133,9 @@ nestgpu_post_process_compile_flags()
 
 nest_process_version_suffix()
 
+# enable synaptic state vars
+nestgpu_process_syn_state_vars()
+
 ################################################################################
 ##################           Create version string            ##################
 ################################################################################

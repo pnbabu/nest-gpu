@@ -87,9 +87,10 @@ NestedLoopFunction1( int i_spike, int i_target_rev_conn )
     // 	   target, i_target_rev_conn, i_conn, conn_struct.weight, syn_group,
     // 	   NESTGPUTimeIdx, spike_time_idx, Dt_int);
     
+#ifdef HAVE_SYN_STATE_VARS
     // Update postsynaptic trace
     SynapsePostTraceUpdate(syn_group, i_conn);
-
+#endif
     if ( Dt_int < MAX_SYN_DT )
     {
       SynapseUpdate( syn_group, &( conn_struct.weight ), NESTGPUTimeResolution * Dt_int, i_conn );

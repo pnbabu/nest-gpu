@@ -45,24 +45,27 @@ enum SynModels
 };
 
 __device__ __forceinline__ void
-SynapseUpdate( int syn_group, float* w, float Dt, int i_conn )
+SynapseUpdate( int syn_group, float* w, float Dt, int i_conn=0)
 {
   int syn_type = SynGroupTypeMap[ syn_group - 1 ];
   float* param = SynGroupParamMap[ syn_group - 1 ];
   switch ( syn_type )
   {
-  // case i_test_syn_model:
-  //   TestSynModelUpdate( w, Dt, param );
-  //   break;
-  // case i_stdp_model:
-  //   stdp_ns::STDPUpdate( w, Dt, param );
-  //   break;
+  case i_test_syn_model:
+    TestSynModelUpdate( w, Dt, param );
+    break;
+  case i_stdp_model:
+    stdp_ns::STDPUpdate( w, Dt, param );
+    break;
+#ifdef HAVE_SYN_STATE_VARS    
   case i_stdp_synapse_model:
     stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
     break;
+#endif    
   }
 }
 
+#ifdef HAVE_SYN_STATE_VARS
 __device__ __forceinline__ void
 SynapsePreTraceUpdate( int syn_group, int i_conn )
 {
@@ -75,6 +78,7 @@ SynapsePreTraceUpdate( int syn_group, int i_conn )
   }
 }
 
+
 __device__ __forceinline__ void
 SynapsePostTraceUpdate( int syn_group, int i_conn )
 {
@@ -86,7 +90,7 @@ SynapsePostTraceUpdate( int syn_group, int i_conn )
       break;
   }
 }
-
+#endif
 
 const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp", "stdp_synapse" };
 
@@ -98,11 +102,11 @@ protected:
   const std::string* param_name_;
   float* d_param_arr_;
 
+#ifdef HAVE_SYN_STATE_VARS
   // State vars
   int n_state_vars_;
   const std::string* state_name_;
-  // int n_conn_;  // Number of connections
-  // float* d_conn_state_;  // Flat array: [n_conn_ * n_state_vars_]
+#endif
 
 public:
   virtual int
@@ -117,12 +121,13 @@ public:
   virtual float GetParam( std::string param_name );
   virtual int SetParam( std::string param_name, float val );
 
+#ifdef HAVE_SYN_STATE_VARS
   // State vars
   int GetNState();
   std::vector< std::string > GetStateNames();
   bool IsState( std::string param_name );
   int GetStateIdx( std::string param_name );
-
+#endif
 
   friend class NESTGPU;
 };

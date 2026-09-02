@@ -123,6 +123,7 @@ SynModel::SetParam( std::string param_name, float val )
   return 0;
 }
 
+#ifdef HAVE_SYN_STATE_VARS
 // Functions for state variables
 int
 SynModel::GetNState()
@@ -181,6 +182,7 @@ SynModel::GetStateIdx( std::string state_name )
   //   return d_conn_state_;
   // }
 
+#endif
 
 int
 NESTGPU::CreateSynGroup( std::string model_name )
@@ -274,6 +276,7 @@ NESTGPU::SetSynGroupParam( int syn_group, std::string param_name, float val )
   return syn_group_vect_[ syn_group - 1 ]->SetParam( param_name, val );
 }
 
+#ifdef HAVE_SYN_STATE_VARS
 int
 NESTGPU::GetMaxSynGroupNState()
 {
@@ -289,7 +292,7 @@ NESTGPU::GetMaxSynGroupNState()
 
   return max_n_state;
 }
-
+#endif
 
 int
 NESTGPU::SynGroupCalibrate()

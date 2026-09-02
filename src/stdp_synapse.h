@@ -22,6 +22,7 @@
 
 #ifndef STDP_SYNAPSE_H
 #define STDP_SYNAPSE_H
+#ifdef HAVE_SYN_STATE_VARS
 #include <cmath>
 
 /* BeginUserDocs: synapse, spike-timing-dependent plasticity
@@ -154,14 +155,14 @@ STDPSynapseUpdate( float* weight_pt, float Dt, float* param, int i_conn )
   {
     // facilitation
     double pre_trace = ConnectionStateVars[ base_idx + i_state_pre_trace ];
-    printf("pre_trace: %f\n", pre_trace);
+    // printf("pre_trace: %f\n", pre_trace);
     w1 = Wmax * (w / Wmax + (lambda * pow((1. - (w / Wmax)), mu_plus) * pre_trace));
   }
   else
   {
     // depression
     double post_trace = ConnectionStateVars[ base_idx + i_state_post_trace ];
-    printf("post_trace: %f\n", post_trace);
+    // printf("post_trace: %f\n", post_trace);
     w1 = Wmax * (w / Wmax - (alpha * lambda * pow((w / Wmax), mu_minus) * post_trace));
   }
 
@@ -171,5 +172,5 @@ STDPSynapseUpdate( float* weight_pt, float Dt, float* param, int i_conn )
   ConnectionStateVars[ base_idx + i_state_w ] = ( float ) w1;
 }
 } // namespace stdp_synapse_ns
-
+#endif
 #endif

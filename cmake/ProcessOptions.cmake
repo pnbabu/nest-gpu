@@ -216,3 +216,7 @@ function( NEST_PROCESS_VERSION_SUFFIX )
     endforeach ()
   endif ()
 endfunction()
+
+function ( NESTGPU_PROCESS_SYN_STATE_VARS )
+  set( HAVE_SYN_STATE_VARS ON PARENT_SCOPE )
+endfunction()

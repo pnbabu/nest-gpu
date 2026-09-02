@@ -493,12 +493,14 @@ NESTGPU::Calibrate()
 
   calibrate_flag_ = true;
 
+#ifdef HAVE_SYN_STATE_VARS
   // Set up connection state variables if any synapse groups have state
   int max_n_state = GetMaxSynGroupNState();
   if (max_n_state > 0) 
   {
     conn_->SetNConnStateVars(max_n_state);
   }
+#endif
 
   conn_->organizeConnections( GetNTotalNodes() );
 

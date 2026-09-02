@@ -83,8 +83,10 @@ NestedLoopFunction0( int i_spike, int i_syn )
     // ConnectionGroupTargetSpikeTime[i_conn*NSpikeBuffer+i_source][i_syn]
     ConnectionSpikeTime[ i_conn ] = ( unsigned short ) ( NESTGPUTimeIdx & 0xffff );
 
+#ifdef HAVE_SYN_STATE_VARS
     // Update presynaptic trace
     SynapsePreTraceUpdate(syn_group, i_conn);
+#endif
 
     long long Dt_int = NESTGPUTimeIdx - LastRevSpikeTimeIdx[ i_target ];
 
