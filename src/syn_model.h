@@ -24,7 +24,6 @@
 #define SYNMODEL_H
 
 #include "stdp.h"
-#include "stdp_synapse.h"
 #include <string>
 #include <vector>
 
@@ -34,6 +33,11 @@ extern __device__ int* SynGroupTypeMap;
 extern __device__ float** SynGroupParamMap;
 
 __device__ void TestSynModelUpdate( float* w, float Dt, float* param );
+__device__ void SynapseUpdate( int syn_group, float* w, float Dt, int i_conn = 0 );
+#ifdef HAVE_SYN_STATE_VARS
+__device__ void SynapsePreTraceUpdate( int syn_group, int i_conn );
+__device__ void SynapsePostTraceUpdate( int syn_group, int i_conn );
+#endif
 
 enum SynModels
 {
@@ -43,54 +47,6 @@ enum SynModels
   i_stdp_synapse_model,
   N_SYN_MODELS
 };
-
-__device__ __forceinline__ void
-SynapseUpdate( int syn_group, float* w, float Dt, int i_conn=0)
-{
-  int syn_type = SynGroupTypeMap[ syn_group - 1 ];
-  float* param = SynGroupParamMap[ syn_group - 1 ];
-  switch ( syn_type )
-  {
-  case i_test_syn_model:
-    TestSynModelUpdate( w, Dt, param );
-    break;
-  case i_stdp_model:
-    stdp_ns::STDPUpdate( w, Dt, param );
-    break;
-#ifdef HAVE_SYN_STATE_VARS    
-  case i_stdp_synapse_model:
-    stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
-    break;
-#endif    
-  }
-}
-
-#ifdef HAVE_SYN_STATE_VARS
-__device__ __forceinline__ void
-SynapsePreTraceUpdate( int syn_group, int i_conn )
-{
-  int syn_type = SynGroupTypeMap[syn_group - 1];
-  switch(syn_type)
-  {
-    case i_stdp_synapse_model:
-      stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
-      break;
-  }
-}
-
-
-__device__ __forceinline__ void
-SynapsePostTraceUpdate( int syn_group, int i_conn )
-{
-  int syn_type = SynGroupTypeMap[syn_group - 1];
-  switch(syn_type)
-  {
-    case i_stdp_synapse_model:
-      stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
-      break;
-  }
-}
-#endif
 
 const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp", "stdp_synapse" };
 
@@ -138,23 +94,6 @@ class STDP : public SynModel
 
 public:
   STDP()
-  {
-    _Init();
-  }
-
-  int
-  Init()
-  {
-    return _Init();
-  }
-};
-
-class STDPSynapse : public SynModel
-{
-  int _Init();
-
-public:
-  STDPSynapse()
   {
     _Init();
   }

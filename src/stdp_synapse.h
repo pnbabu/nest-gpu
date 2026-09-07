@@ -24,6 +24,7 @@
 #define STDP_SYNAPSE_H
 #ifdef HAVE_SYN_STATE_VARS
 #include <cmath>
+#include "syn_model.h"
 
 /* BeginUserDocs: synapse, spike-timing-dependent plasticity
 
@@ -106,71 +107,30 @@ const std::string stdp_synapse_state_name[N_STATE_VARS] = {
     "w", "pre_trace", "post_trace"
 };
 
-__device__ __forceinline__ void
-STDPSynapsePreTraceUpdate(int i_conn)
-{
-  int base_idx = N_STATE_VARS * i_conn;
-  ConnectionStateVars[base_idx + i_state_pre_trace] = 1.0f;
-}
+// Definitions of the device functions below are in stdp_synapse.cu
+__device__ void STDPSynapsePreTraceUpdate( int i_conn );
 
-__device__ __forceinline__ void
-STDPSynapsePostTraceUpdate(int i_conn)
-{
-  int base_idx = N_STATE_VARS * i_conn;
-  ConnectionStateVars[base_idx + i_state_post_trace] = 1.0f;
-}
+__device__ void STDPSynapsePostTraceUpdate( int i_conn );
 
-__device__ __forceinline__ void 
-update_internal_state(float Dt, float* param, int i_conn)
-{
-  // Update the trace values
-  int base_idx = N_STATE_VARS * i_conn;
-  const double pre_trace_tmp = exp( -( double ) Dt / param[ i_tau_plus ] ) * ConnectionStateVars[ base_idx + i_state_pre_trace ];
-  const double post_trace_tmp = exp( ( double ) Dt / param[i_tau_minus] ) * ConnectionStateVars[ base_idx + i_state_post_trace ];
-  ConnectionStateVars[ base_idx + i_state_pre_trace ] = pre_trace_tmp;
-  ConnectionStateVars[ base_idx + i_state_post_trace ] = post_trace_tmp;
-}
-
-__device__ __forceinline__ void
-STDPSynapseUpdate( float* weight_pt, float Dt, float* param, int i_conn )
-{
-  // printf("In STDPSynapseUpdate function. Dt: %f\n", Dt);
-  double lambda = param[ i_lambda ];
-  double alpha = param[ i_alpha ];
-  double mu_plus = param[ i_mu_plus ];
-  double mu_minus = param[ i_mu_minus ];
-  double Wmax = param[ i_Wmax ];
-  // double den_delay = param[i_den_delay];
-
-  // State vars
-  int base_idx = N_STATE_VARS * i_conn;
-  
-  ConnectionStateVars[ base_idx + i_state_w ] = *weight_pt;
-  double w = *weight_pt;
-  double w1;
-
-  update_internal_state(Dt, param, i_conn);
-  // Dt += den_delay;
-  if ( Dt >= 0 )
-  {
-    // facilitation
-    double pre_trace = ConnectionStateVars[ base_idx + i_state_pre_trace ];
-    // printf("pre_trace: %f\n", pre_trace);
-    w1 = Wmax * (w / Wmax + (lambda * pow((1. - (w / Wmax)), mu_plus) * pre_trace));
-  }
-  else
-  {
-    // depression
-    double post_trace = ConnectionStateVars[ base_idx + i_state_post_trace ];
-    // printf("post_trace: %f\n", post_trace);
-    w1 = Wmax * (w / Wmax - (alpha * lambda * pow((w / Wmax), mu_minus) * post_trace));
-  }
-
-  w1 = w1 > 0.0 ? w1 : 0.0;
-  w1 = w1 < Wmax ? w1 : Wmax;
-  *weight_pt = ( float ) w1;
-  ConnectionStateVars[ base_idx + i_state_w ] = ( float ) w1;
-}
+__device__ void STDPSynapseUpdate( float* weight_pt, float Dt, float* param, int i_conn );
 } // namespace stdp_synapse_ns
+
+class STDPSynapse : public SynModel
+{
+  int _Init();
+
+public:
+  STDPSynapse()
+  {
+    _Init();
+  }
+
+  int
+  Init()
+  {
+    return _Init();
+  }
+};
+
 #endif
 #endif

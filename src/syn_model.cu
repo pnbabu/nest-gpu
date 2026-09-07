@@ -30,6 +30,8 @@
 #include <config.h>
 #include <iostream>
 
+// SynModel* CreateSTDPSynapse(); // defined in stdp_synapse.cu
+
 int* d_SynGroupTypeMap;
 __device__ int* SynGroupTypeMap;
 
@@ -44,6 +46,54 @@ SynGroupInit( int* syn_group_type_map, float** syn_group_param_map )
   SynGroupTypeMap = syn_group_type_map;
   SynGroupParamMap = syn_group_param_map;
 }
+
+__device__ void
+SynapseUpdate( int syn_group, float* w, float Dt, int i_conn )
+{
+  int syn_type = SynGroupTypeMap[ syn_group - 1 ];
+  float* param = SynGroupParamMap[ syn_group - 1 ];
+  switch ( syn_type )
+  {
+  case i_test_syn_model:
+    TestSynModelUpdate( w, Dt, param );
+    break;
+  case i_stdp_model:
+    stdp_ns::STDPUpdate( w, Dt, param );
+    break;
+#ifdef HAVE_SYN_STATE_VARS    
+  case i_stdp_synapse_model:
+    stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
+    break;
+#endif    
+  }
+}
+
+#ifdef HAVE_SYN_STATE_VARS
+__device__ void
+SynapsePreTraceUpdate( int syn_group, int i_conn )
+{
+  int syn_type = SynGroupTypeMap[syn_group - 1];
+  switch(syn_type)
+  {
+    case i_stdp_synapse_model:
+      stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
+      break;
+  }
+}
+
+
+__device__ void
+SynapsePostTraceUpdate( int syn_group, int i_conn )
+{
+  int syn_type = SynGroupTypeMap[syn_group - 1];
+  switch(syn_type)
+  {
+    case i_stdp_synapse_model:
+      stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
+      break;
+  }
+}
+#endif
 
 int
 SynModel::GetNParam()
@@ -200,6 +250,7 @@ NESTGPU::CreateSynGroup( std::string model_name )
   }
   else if ( model_name == syn_model_name[ i_stdp_synapse_model ] )
   {
+    // SynModel* stdp_synapse_group = CreateSTDPSynapse();
     STDPSynapse* stdp_synapse_group = new STDPSynapse;
     syn_group_vect_.push_back( stdp_synapse_group );
   }
