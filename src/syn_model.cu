@@ -29,6 +29,9 @@
 #include "test_syn_model.h"
 #include <config.h>
 #include <iostream>
+// <<BEGIN_NESTML_GENERATED>>
+
+// <<END_NESTML_GENERATED>>
 
 // SynModel* CreateSTDPSynapse(); // defined in stdp_synapse.cu
 
@@ -64,6 +67,9 @@ SynapseUpdate( int syn_group, float* w, float Dt, int i_conn )
   case i_stdp_synapse_model:
     stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
     break;
+  // <<BEGIN_NESTML_GENERATED>>
+
+  // <<END_NESTML_GENERATED>>  
 #endif    
   }
 }
@@ -78,6 +84,9 @@ SynapsePreTraceUpdate( int syn_group, int i_conn )
     case i_stdp_synapse_model:
       stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
       break;
+    // <<BEGIN_NESTML_GENERATED>>
+
+    // <<END_NESTML_GENERATED>>
   }
 }
 
@@ -91,6 +100,9 @@ SynapsePostTraceUpdate( int syn_group, int i_conn )
     case i_stdp_synapse_model:
       stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
       break;
+    // <<BEGIN_NESTML_GENERATED>>
+
+    // <<END_NESTML_GENERATED>>  
   }
 }
 #endif
@@ -226,12 +238,6 @@ SynModel::GetStateIdx( std::string state_name )
   return i_state;
 }
 
-  // float*
-  // GetDevConnStatePt()
-  // {
-  //   return d_conn_state_;
-  // }
-
 #endif
 
 int
@@ -250,10 +256,12 @@ NESTGPU::CreateSynGroup( std::string model_name )
   }
   else if ( model_name == syn_model_name[ i_stdp_synapse_model ] )
   {
-    // SynModel* stdp_synapse_group = CreateSTDPSynapse();
     STDPSynapse* stdp_synapse_group = new STDPSynapse;
     syn_group_vect_.push_back( stdp_synapse_group );
   }
+  // <<BEGIN_NESTML_GENERATED>>
+
+  // <<END_NESTML_GENERATED>>
   else
   {
     throw ngpu_exception( std::string( "Unknown synapse model name: " ) + model_name );

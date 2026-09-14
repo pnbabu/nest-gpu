@@ -124,9 +124,4 @@ STDPSynapse::_Init()
   return 0;
 }
 
-// SynModel*
-// CreateSTDPSynapse()
-// {
-//   return new STDPSynapse;
-// }
 #endif

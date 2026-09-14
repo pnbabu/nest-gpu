@@ -45,10 +45,20 @@ enum SynModels
   i_test_syn_model,
   i_stdp_model,
   i_stdp_synapse_model,
+// <<BEGIN_NESTML_GENERATED>>
+
+// <<END_NESTML_GENERATED>>
   N_SYN_MODELS
 };
 
-const std::string syn_model_name[ N_SYN_MODELS ] = { "", "test_syn_model", "stdp", "stdp_synapse" };
+const std::string syn_model_name[ N_SYN_MODELS ] = { "", 
+  "test_syn_model", 
+  "stdp", 
+  "stdp_synapse"
+  // <<BEGIN_NESTML_GENERATED>>
+
+  // <<END_NESTML_GENERATED>>
+ };
 
 class SynModel
 {
