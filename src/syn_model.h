@@ -29,18 +29,17 @@
 
 #define MAX_SYN_DT 16384
 
-extern __device__ int* SynGroupTypeMap;
-extern __device__ float** SynGroupParamMap;
-
-__device__ void TestSynModelUpdate( float* w, float Dt, float* param );
+extern __device__ int *SynGroupTypeMap;
+extern __device__ float **SynGroupParamMap;
 __device__ void SynapseUpdate( int syn_group, float* w, float Dt, int i_conn = 0 );
 #ifdef HAVE_SYN_STATE_VARS
 __device__ void SynapsePreTraceUpdate( int syn_group, int i_conn );
 __device__ void SynapsePostTraceUpdate( int syn_group, int i_conn );
 #endif
 
-enum SynModels
-{
+__device__ void TestSynModelUpdate(float *w, float Dt, float *param);
+
+enum SynModels {
   i_null_syn_model = 0,
   i_test_syn_model,
   i_stdp_model,
@@ -54,19 +53,18 @@ enum SynModels
 const std::string syn_model_name[ N_SYN_MODELS ] = { "", 
   "test_syn_model", 
   "stdp", 
-  "stdp_synapse"
+  "stdp_synapse",
   // <<BEGIN_NESTML_GENERATED>>
 
   // <<END_NESTML_GENERATED>>
  };
 
-class SynModel
-{
+class SynModel {
 protected:
   int type_;
   int n_param_;
-  const std::string* param_name_;
-  float* d_param_arr_;
+  const std::string *param_name_;
+  float *d_param_arr_;
 
 #ifdef HAVE_SYN_STATE_VARS
   // State vars
@@ -75,18 +73,13 @@ protected:
 #endif
 
 public:
-  virtual int
-  Init()
-  {
-    return 0;
-  }
+  virtual int Init() { return 0; }
   int GetNParam();
-  std::vector< std::string > GetParamNames();
-  bool IsParam( std::string param_name );
-  int GetParamIdx( std::string param_name );
-  virtual float GetParam( std::string param_name );
-  virtual int SetParam( std::string param_name, float val );
-
+  std::vector<std::string> GetParamNames();
+  bool IsParam(std::string param_name);
+  int GetParamIdx(std::string param_name);
+  virtual float GetParam(std::string param_name);
+  virtual int SetParam(std::string param_name, float val);
 #ifdef HAVE_SYN_STATE_VARS
   // State vars
   int GetNState();
@@ -98,21 +91,13 @@ public:
   friend class NESTGPU;
 };
 
-class STDP : public SynModel
-{
+class STDP : public SynModel {
   int _Init();
 
 public:
-  STDP()
-  {
-    _Init();
-  }
+  STDP() { _Init(); }
 
-  int
-  Init()
-  {
-    return _Init();
-  }
+  int Init() { return _Init(); }
 };
 
 #endif

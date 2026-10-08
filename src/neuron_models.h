@@ -23,8 +23,7 @@
 #ifndef NEURONMODELS_H
 #define NEURONMODELS_H
 
-enum NeuronModels
-{
+enum NeuronModels {
   i_null_model = 0,
   i_iaf_psc_exp_g_model,
   i_iaf_psc_exp_hc_model,
@@ -51,38 +50,36 @@ enum NeuronModels
   i_izhikevich_psc_exp_model,
   i_user_m1_model,
   i_user_m2_model,
-  // <<BEGIN_NESTML_GENERATED>>
-
-  // <<END_NESTML_GENERATED>>
   N_NEURON_MODELS
 };
 
-const std::string neuron_model_name[ N_NEURON_MODELS ] = { "",
-  "iaf_psc_exp_g",
-  "iaf_psc_exp_hc",
-  "iaf_psc_exp",
-  "iaf_psc_alpha",
-  "ext_neuron",
-  "aeif_cond_alpha",
-  "aeif_cond_beta",
-  "aeif_psc_alpha",
-  "aeif_psc_delta",
-  "aeif_psc_exp",
-  "aeif_cond_beta_multisynapse",
-  "aeif_cond_alpha_multisynapse",
-  "aeif_psc_exp_multisynapse",
-  "aeif_psc_alpha_multisynapse",
-  "poisson_generator",
-  "spike_generator",
-  "parrot_neuron",
-  "spike_detector",
-  "izhikevich_cond_beta",
-  "izhikevich",
-  "izhikevich_psc_exp_5s",
-  "izhikevich_psc_exp_2s",
-  "izhikevich_psc_exp",
-  "user_m1",
-  "user_m2" 
+const std::string neuron_model_name[N_NEURON_MODELS] = {
+    "",
+    "iaf_psc_exp_g",
+    "iaf_psc_exp_hc",
+    "iaf_psc_exp",
+    "iaf_psc_alpha",
+    "ext_neuron",
+    "aeif_cond_alpha",
+    "aeif_cond_beta",
+    "aeif_psc_alpha",
+    "aeif_psc_delta",
+    "aeif_psc_exp",
+    "aeif_cond_beta_multisynapse",
+    "aeif_cond_alpha_multisynapse",
+    "aeif_psc_exp_multisynapse",
+    "aeif_psc_alpha_multisynapse",
+    "poisson_generator",
+    "spike_generator",
+    "parrot_neuron",
+    "spike_detector",
+    "izhikevich_cond_beta",
+    "izhikevich",
+    "izhikevich_psc_exp_5s",
+    "izhikevich_psc_exp_2s",
+    "izhikevich_psc_exp",
+    "user_m1",
+    "user_m2" 
   // <<BEGIN_NESTML_GENERATED>>
 
   // <<END_NESTML_GENERATED>>
