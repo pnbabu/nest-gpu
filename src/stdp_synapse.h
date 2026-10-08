@@ -23,8 +23,8 @@
 #ifndef STDP_SYNAPSE_H
 #define STDP_SYNAPSE_H
 #ifdef HAVE_SYN_STATE_VARS
-#include <cmath>
 #include "syn_model.h"
+#include <cmath>
 
 /* BeginUserDocs: synapse, spike-timing-dependent plasticity
 
@@ -68,12 +68,10 @@ References
 
 EndUserDocs */
 
-extern __device__ float* ConnectionStateVars;
+extern __device__ float *ConnectionStateVars;
 
-namespace stdp_synapse_ns
-{
-enum ParamIndexes
-{
+namespace stdp_synapse_ns {
+enum ParamIndexes {
   i_tau_plus = 0,
   i_tau_minus,
   i_lambda,
@@ -84,52 +82,38 @@ enum ParamIndexes
   N_PARAM
 };
 
-const std::string stdp_synapse_param_name[ N_PARAM ] = {
-  "tau_plus",
-  "tau_minus",
-  "lambda",
-  "alpha",
-  "mu_plus",
-  "mu_minus",
-  "Wmax"
-  //, "den_delay"
+const std::string stdp_synapse_param_name[N_PARAM] = {
+    "tau_plus", "tau_minus", "lambda", "alpha",
+    "mu_plus",  "mu_minus",  "Wmax"
+    //, "den_delay"
 };
 
-enum StateIndexes
-{
-    i_state_w = 0,           // Weight state variable
-    i_state_pre_trace,        // Presynaptic trace
-    i_state_post_trace,       // Postsynaptic trace
-    N_STATE_VARS              // STDP has 3 state variables
+enum StateIndexes {
+  i_state_w = 0,      // Weight state variable
+  i_state_pre_trace,  // Presynaptic trace
+  i_state_post_trace, // Postsynaptic trace
+  N_STATE_VARS        // STDP has 3 state variables
 };
 
-const std::string stdp_synapse_state_name[N_STATE_VARS] = {
-    "w", "pre_trace", "post_trace"
-};
+const std::string stdp_synapse_state_name[N_STATE_VARS] = {"w", "pre_trace",
+                                                           "post_trace"};
 
 // Definitions of the device functions below are in stdp_synapse.cu
-__device__ void STDPSynapsePreTraceUpdate( int i_conn );
+__device__ void STDPSynapsePreTraceUpdate(int i_conn);
 
-__device__ void STDPSynapsePostTraceUpdate( int i_conn );
+__device__ void STDPSynapsePostTraceUpdate(int i_conn);
 
-__device__ void STDPSynapseUpdate( float* weight_pt, float Dt, float* param, int i_conn );
+__device__ void STDPSynapseUpdate(float *weight_pt, float Dt, float *param,
+                                  int i_conn);
 } // namespace stdp_synapse_ns
 
-class STDPSynapse : public SynModel
-{
+class STDPSynapse : public SynModel {
   int _Init();
 
 public:
-  STDPSynapse()
-  {
-    _Init();
-  }
+  STDPSynapse() { _Init(); }
 
-  int
-  Init()
-  {
-    return _Init();
-  }
+  int Init() { return _Init(); }
 };
 
 #endif

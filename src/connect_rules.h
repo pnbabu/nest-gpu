@@ -29,72 +29,72 @@
 #else
 #endif
 #ifdef _OPENMP
-  omp_lock_t *lock = new omp_lock_t[n_source];
-  for (int i=0; i<n_source; i++) {
-    omp_init_lock(&(lock[i]));
-  }
+omp_lock_t *lock = new omp_lock_t[n_source];
+for (int i = 0; i < n_source; i++) {
+  omp_init_lock(&(lock[i]));
+}
 #pragma omp parallel for default(shared) collapse(2)
 #endif
 #ifdef _OPENMP
-      omp_set_lock(&(lock[isn]));
+omp_set_lock(&(lock[isn]));
 #endif
 #ifdef _OPENMP
-      omp_unset_lock(&(lock[isn]));
+omp_unset_lock(&(lock[isn]));
 #endif
 #ifdef _OPENMP
-  delete[] lock;
+delete[] lock;
 #endif
 #ifdef _OPENMP
-  omp_lock_t *lock = new omp_lock_t[n_source];
-  for (int i=0; i<n_source; i++) {
-    omp_init_lock(&(lock[i]));
-  }
+omp_lock_t *lock = new omp_lock_t[n_source];
+for (int i = 0; i < n_source; i++) {
+  omp_init_lock(&(lock[i]));
+}
 #pragma omp parallel for default(shared)
 #endif
 #ifdef _OPENMP
-    omp_set_lock(&(lock[isn]));
+omp_set_lock(&(lock[isn]));
 #endif
 #ifdef _OPENMP
-      omp_unset_lock(&(lock[isn]));
+omp_unset_lock(&(lock[isn]));
 #endif
 #ifdef _OPENMP
-  delete[] lock;
+delete[] lock;
 #endif
 #ifdef _OPENMP
-  omp_lock_t *lock = new omp_lock_t[n_source];
-  for (int i=0; i<n_source; i++) {
-    omp_init_lock(&(lock[i]));
-  }
-#endif
-#ifdef _OPENMP
-#pragma omp parallel for default(shared)
-#endif
-#ifdef _OPENMP
-	  omp_set_lock(&(lock[isn]));
-#endif
-#ifdef _OPENMP
-	  omp_unset_lock(&(lock[isn]));
-#endif
-#ifdef _OPENMP
-  delete[] lock;
-#endif
-#ifdef _OPENMP
-  omp_lock_t *lock = new omp_lock_t[n_source];
-  for (int i=0; i<n_source; i++) {
-    omp_init_lock(&(lock[i]));
-  }
+omp_lock_t *lock = new omp_lock_t[n_source];
+for (int i = 0; i < n_source; i++) {
+  omp_init_lock(&(lock[i]));
+}
 #endif
 #ifdef _OPENMP
 #pragma omp parallel for default(shared)
 #endif
 #ifdef _OPENMP
-	  omp_set_lock(&(lock[isn]));
-#endif	  
-#ifdef _OPENMP
-	  omp_unset_lock(&(lock[isn]));
+omp_set_lock(&(lock[isn]));
 #endif
 #ifdef _OPENMP
-  delete[] lock;
+omp_unset_lock(&(lock[isn]));
+#endif
+#ifdef _OPENMP
+delete[] lock;
+#endif
+#ifdef _OPENMP
+omp_lock_t *lock = new omp_lock_t[n_source];
+for (int i = 0; i < n_source; i++) {
+  omp_init_lock(&(lock[i]));
+}
+#endif
+#ifdef _OPENMP
+#pragma omp parallel for default(shared)
+#endif
+#ifdef _OPENMP
+omp_set_lock(&(lock[isn]));
+#endif
+#ifdef _OPENMP
+omp_unset_lock(&(lock[isn]));
+#endif
+#ifdef _OPENMP
+delete[] lock;
 #endif
 
 #endif

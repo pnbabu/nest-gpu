@@ -444,8 +444,7 @@ int NESTGPU::Calibrate() {
 #ifdef HAVE_SYN_STATE_VARS
   // Set up connection state variables if any synapse groups have state
   int max_n_state = GetMaxSynGroupNState();
-  if (max_n_state > 0) 
-  {
+  if (max_n_state > 0) {
     conn_->SetNConnStateVars(max_n_state);
   }
 #endif
@@ -597,8 +596,8 @@ int NESTGPU::StartSimulation() {
   if (first_simulation_flag_) {
     gpuErrchk(cudaMemcpyToSymbolAsync(NESTGPUTime, &neur_t0_, sizeof(double)));
     long long time_idx = (int)round(neur_t0_ / time_resolution_);
-    //multimeter_->WriteRecords( neur_t0_, time_idx );
-    // build_real_time_ = getRealTime(); moved at the end of Calibrate method
+    // multimeter_->WriteRecords( neur_t0_, time_idx );
+    //  build_real_time_ = getRealTime(); moved at the end of Calibrate method
     first_simulation_flag_ = false;
   } else {
     neur_t0_ = neural_time_;

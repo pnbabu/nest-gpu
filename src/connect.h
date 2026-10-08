@@ -156,14 +156,14 @@ public:
   virtual int *getDevSpikeNumPt() = 0;
 
   virtual uint *getDevRevSpikeNumPt() = 0;
- 
-#ifdef HAVE_SYN_STATE_VARS
-  virtual float* GetDevConnStatePt() = 0;
 
-  virtual int GetNConnStateVars()  = 0;
+#ifdef HAVE_SYN_STATE_VARS
+  virtual float *GetDevConnStatePt() = 0;
+
+  virtual int GetNConnStateVars() = 0;
 
   virtual void SetNConnStateVars(int n_state_vars) = 0;
-#endif  
+#endif
 
   // get pt to array of number of reverse connections incoming to each node
   virtual int *getDevRevSpikeNConnPt() = 0;
@@ -701,8 +701,8 @@ class ConnectionTemplate : public Connection {
 
 #ifdef HAVE_SYN_STATE_VARS
   bool syn_state_vars_flag;
-  int n_conn_state_vars_;  // Total state vars across all models
-  float* d_conn_state_;  // Flat array: [n_conn * n_conn_state_vars_]
+  int n_conn_state_vars_; // Total state vars across all models
+  float *d_conn_state_;   // Flat array: [n_conn * n_conn_state_vars_]
 #endif
 
   int64_t n_rev_conn_;
@@ -973,19 +973,12 @@ public:
   uint *getDevRevSpikeNumPt() { return d_rev_spike_num_; }
 
 #ifdef HAVE_SYN_STATE_VARS
-  float* GetDevConnStatePt() 
-  { 
-    return d_conn_state_; 
-  }
-  
-  int GetNConnStateVars() 
-  { 
-    return n_conn_state_vars_; 
-  }
+  float *GetDevConnStatePt() { return d_conn_state_; }
 
-  void SetNConnStateVars(int n_state_vars) 
-  { 
-    n_conn_state_vars_ = n_state_vars; 
+  int GetNConnStateVars() { return n_conn_state_vars_; }
+
+  void SetNConnStateVars(int n_state_vars) {
+    n_conn_state_vars_ = n_state_vars;
   }
 #endif
   int *getDevRevSpikeNConnPt() { return d_rev_spike_n_conn_; }
@@ -2425,10 +2418,11 @@ __global__ void connectCalibrateKernel(iconngroup_t *conn_group_idx0,
                                        int64_t block_size, void *conn_key_array,
                                        void *conn_struct_array,
                                        unsigned short *conn_spike_time
-                                       #ifdef HAVE_SYN_STATE_VARS  
-                                       ,float* conn_state_vars
-                                       #endif
-                                      );
+#ifdef HAVE_SYN_STATE_VARS
+                                       ,
+                                       float *conn_state_vars
+#endif
+);
 
 // template <class ConnKeyT, class ConnStructT>
 // ConnectionTemplate<ConnKeyT, ConnStructT>::ConnectionTemplate()
@@ -2521,12 +2515,12 @@ int ConnectionTemplate<ConnKeyT, ConnStructT>::init() {
   rev_conn_flag_ = false;
   spike_time_flag_ = false;
   d_conn_spike_time_ = nullptr;
- 
- #ifdef HAVE_SYN_STATE_VARS
+
+#ifdef HAVE_SYN_STATE_VARS
   // synaptic state vars
   syn_state_vars_flag = false;
   d_conn_state_ = nullptr;
-#endif 
+#endif
 
   n_rev_conn_ = 0;
   d_rev_spike_num_ = nullptr;
@@ -2613,22 +2607,22 @@ int ConnectionTemplate<ConnKeyT, ConnStructT>::calibrate() {
                    n_conn_ * sizeof(unsigned short));
   }
 
-#ifdef HAVE_SYN_STATE_VARS  
+#ifdef HAVE_SYN_STATE_VARS
   if (syn_state_vars_flag && n_conn_state_vars_ > 0) {
-    CUDAMALLOCCTRL("&d_conn_state_", &d_conn_state_, 
+    CUDAMALLOCCTRL("&d_conn_state_", &d_conn_state_,
                    n_conn_ * n_conn_state_vars_ * sizeof(float));
   }
 #endif
 
   connectCalibrateKernel<<<1, 1>>>(d_conn_group_idx0_, d_conn_group_iconn0_,
                                    d_conn_group_delay_, conn_block_size_,
-                                   d_conn_key_array_, 
-                                   d_conn_struct_array_,
+                                   d_conn_key_array_, d_conn_struct_array_,
                                    d_conn_spike_time_
-                                   #ifdef HAVE_SYN_STATE_VARS
-                                   , d_conn_state_
-                                   #endif
-                                  );
+#ifdef HAVE_SYN_STATE_VARS
+                                   ,
+                                   d_conn_state_
+#endif
+  );
   DBGCUDASYNC;
 
   return 0;
@@ -3103,10 +3097,10 @@ int ConnectionTemplate<ConnKeyT, ConnStructT>::_Connect(
     // exit(-1);
     spike_time_flag_ = true;
     rev_conn_flag_ = true;
-  
-  #ifdef HAVE_SYN_STATE_VARS    
+
+#ifdef HAVE_SYN_STATE_VARS
     syn_state_vars_flag = true;
-  #endif  
+#endif
   }
 
   switch (conn_spec.rule_) {

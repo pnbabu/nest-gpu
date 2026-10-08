@@ -24,9 +24,9 @@
 #include "nestgpu.h"
 #include "ngpu_exception.h"
 #include "stdp.h"
+#include "stdp_synapse.h"
 #include "syn_model.h"
 #include "test_syn_model.h"
-#include "stdp_synapse.h"
 #include <config.h>
 #include <iostream>
 
@@ -45,59 +45,49 @@ __global__ void SynGroupInit(int *syn_group_type_map,
 }
 
 int SynModel::GetNParam() { return n_param_; }
-__device__ void
-SynapseUpdate( int syn_group, float* w, float Dt, int i_conn )
-{
-  int syn_type = SynGroupTypeMap[ syn_group - 1 ];
-  float* param = SynGroupParamMap[ syn_group - 1 ];
-  switch ( syn_type )
-  {
+__device__ void SynapseUpdate(int syn_group, float *w, float Dt, int i_conn) {
+  int syn_type = SynGroupTypeMap[syn_group - 1];
+  float *param = SynGroupParamMap[syn_group - 1];
+  switch (syn_type) {
   case i_test_syn_model:
-    TestSynModelUpdate( w, Dt, param );
+    TestSynModelUpdate(w, Dt, param);
     break;
   case i_stdp_model:
-    stdp_ns::STDPUpdate( w, Dt, param );
+    stdp_ns::STDPUpdate(w, Dt, param);
     break;
-#ifdef HAVE_SYN_STATE_VARS    
+#ifdef HAVE_SYN_STATE_VARS
   case i_stdp_synapse_model:
-    stdp_synapse_ns::STDPSynapseUpdate( w, Dt, param, i_conn );
+    stdp_synapse_ns::STDPSynapseUpdate(w, Dt, param, i_conn);
     break;
-  // <<BEGIN_NESTML_GENERATED>>
+    // <<BEGIN_NESTML_GENERATED>>
 
-  // <<END_NESTML_GENERATED>>  
-#endif    
+    // <<END_NESTML_GENERATED>>
+#endif
   }
 }
 
 #ifdef HAVE_SYN_STATE_VARS
-__device__ void
-SynapsePreTraceUpdate( int syn_group, int i_conn )
-{
+__device__ void SynapsePreTraceUpdate(int syn_group, int i_conn) {
   int syn_type = SynGroupTypeMap[syn_group - 1];
-  switch(syn_type)
-  {
-    case i_stdp_synapse_model:
-      stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
-      break;
+  switch (syn_type) {
+  case i_stdp_synapse_model:
+    stdp_synapse_ns::STDPSynapsePreTraceUpdate(i_conn);
+    break;
     // <<BEGIN_NESTML_GENERATED>>
 
     // <<END_NESTML_GENERATED>>
   }
 }
 
-
-__device__ void
-SynapsePostTraceUpdate( int syn_group, int i_conn )
-{
+__device__ void SynapsePostTraceUpdate(int syn_group, int i_conn) {
   int syn_type = SynGroupTypeMap[syn_group - 1];
-  switch(syn_type)
-  {
-    case i_stdp_synapse_model:
-      stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
-      break;
+  switch (syn_type) {
+  case i_stdp_synapse_model:
+    stdp_synapse_ns::STDPSynapsePostTraceUpdate(i_conn);
+    break;
     // <<BEGIN_NESTML_GENERATED>>
 
-    // <<END_NESTML_GENERATED>>  
+    // <<END_NESTML_GENERATED>>
   }
 }
 #endif
@@ -162,52 +152,37 @@ int SynModel::SetParam(std::string param_name, float val) {
 
 #ifdef HAVE_SYN_STATE_VARS
 // Functions for state variables
-int
-SynModel::GetNState()
-{
-  return n_state_vars_;
-}
+int SynModel::GetNState() { return n_state_vars_; }
 
-std::vector< std::string >
-SynModel::GetStateNames()
-{
-  std::vector< std::string > state_name_vect;
-  for ( int i = 0; i < n_param_; i++ )
-  {
-    state_name_vect.push_back( state_name_[ i ] );
+std::vector<std::string> SynModel::GetStateNames() {
+  std::vector<std::string> state_name_vect;
+  for (int i = 0; i < n_param_; i++) {
+    state_name_vect.push_back(state_name_[i]);
   }
 
   return state_name_vect;
 }
 
-bool
-SynModel::IsState( std::string state_name )
-{
+bool SynModel::IsState(std::string state_name) {
   int i_state;
-  for ( i_state = 0; i_state < n_state_vars_; i_state++ )
-  {
-    if ( state_name == state_name_[ i_state ] )
-    {
+  for (i_state = 0; i_state < n_state_vars_; i_state++) {
+    if (state_name == state_name_[i_state]) {
       return true;
     }
   }
   return false;
 }
 
-int
-SynModel::GetStateIdx( std::string state_name )
-{
+int SynModel::GetStateIdx(std::string state_name) {
   int i_state;
-  for ( i_state = 0; i_state < n_state_vars_; i_state++ )
-  {
-    if ( state_name == state_name_[ i_state ] )
-    {
+  for (i_state = 0; i_state < n_state_vars_; i_state++) {
+    if (state_name == state_name_[i_state]) {
       break;
     }
   }
-  if ( i_state == n_state_vars_ )
-  {
-    throw ngpu_exception( std::string( "Unrecognized state variable " ) + state_name );
+  if (i_state == n_state_vars_) {
+    throw ngpu_exception(std::string("Unrecognized state variable ") +
+                         state_name);
   }
 
   return i_state;
@@ -224,7 +199,7 @@ int NESTGPU::CreateSynGroup(std::string model_name) {
     STDP *stdp_group = new STDP;
     syn_group_vect_.push_back(stdp_group);
   } else if (model_name == syn_model_name[i_stdp_synapse_model]) {
-    STDPSynapse* stdp_synapse_group = new STDPSynapse;
+    STDPSynapse *stdp_synapse_group = new STDPSynapse;
     syn_group_vect_.push_back(stdp_synapse_group);
   }
   // <<BEGIN_NESTML_GENERATED>>
@@ -287,9 +262,7 @@ int NESTGPU::SetSynGroupParam(int syn_group, std::string param_name,
 }
 
 #ifdef HAVE_SYN_STATE_VARS
-int
-NESTGPU::GetMaxSynGroupNState()
-{
+int NESTGPU::GetMaxSynGroupNState() {
   int n_group = syn_group_vect_.size();
   int max_n_state = 0;
 

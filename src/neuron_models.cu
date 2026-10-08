@@ -168,7 +168,7 @@ NodeSeq NESTGPU::_Create(std::string model_name, uint n_nodes /*=1*/,
   } else if (model_name == neuron_model_name[i_izhikevich_psc_exp_model]) {
     izhikevich_psc_exp *izhikevich_psc_exp_group = new izhikevich_psc_exp;
     node_vect_.push_back(izhikevich_psc_exp_group);
-  } 
+  }
   // <<BEGIN_NESTML_GENERATED>>
 
   // <<END_NESTML_GENERATED>>

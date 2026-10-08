@@ -35,7 +35,6 @@ extern __constant__ long long NESTGPUTimeIdx;
 
 extern __constant__ float NESTGPUTimeResolution;
 
-
 __device__ unsigned int *RevSpikeNum;
 
 __device__ unsigned int *RevSpikeTarget;

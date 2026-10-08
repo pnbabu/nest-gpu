@@ -31,10 +31,11 @@
 
 extern __device__ int *SynGroupTypeMap;
 extern __device__ float **SynGroupParamMap;
-__device__ void SynapseUpdate( int syn_group, float* w, float Dt, int i_conn = 0 );
+__device__ void SynapseUpdate(int syn_group, float *w, float Dt,
+                              int i_conn = 0);
 #ifdef HAVE_SYN_STATE_VARS
-__device__ void SynapsePreTraceUpdate( int syn_group, int i_conn );
-__device__ void SynapsePostTraceUpdate( int syn_group, int i_conn );
+__device__ void SynapsePreTraceUpdate(int syn_group, int i_conn);
+__device__ void SynapsePostTraceUpdate(int syn_group, int i_conn);
 #endif
 
 __device__ void TestSynModelUpdate(float *w, float Dt, float *param);
@@ -44,20 +45,21 @@ enum SynModels {
   i_test_syn_model,
   i_stdp_model,
   i_stdp_synapse_model,
-// <<BEGIN_NESTML_GENERATED>>
-
-// <<END_NESTML_GENERATED>>
-  N_SYN_MODELS
-};
-
-const std::string syn_model_name[ N_SYN_MODELS ] = { "", 
-  "test_syn_model", 
-  "stdp", 
-  "stdp_synapse",
   // <<BEGIN_NESTML_GENERATED>>
 
   // <<END_NESTML_GENERATED>>
- };
+  N_SYN_MODELS
+};
+
+const std::string syn_model_name[N_SYN_MODELS] = {
+    "",
+    "test_syn_model",
+    "stdp",
+    "stdp_synapse",
+    // <<BEGIN_NESTML_GENERATED>>
+
+    // <<END_NESTML_GENERATED>>
+};
 
 class SynModel {
 protected:
@@ -69,7 +71,7 @@ protected:
 #ifdef HAVE_SYN_STATE_VARS
   // State vars
   int n_state_vars_;
-  const std::string* state_name_;
+  const std::string *state_name_;
 #endif
 
 public:
@@ -83,9 +85,9 @@ public:
 #ifdef HAVE_SYN_STATE_VARS
   // State vars
   int GetNState();
-  std::vector< std::string > GetStateNames();
-  bool IsState( std::string param_name );
-  int GetStateIdx( std::string param_name );
+  std::vector<std::string> GetStateNames();
+  bool IsState(std::string param_name);
+  int GetStateIdx(std::string param_name);
 #endif
 
   friend class NESTGPU;

@@ -43,8 +43,9 @@ extern unsigned short *d_ConnectionSpikeTime;          // [NConnection];
 extern __device__ unsigned short *ConnectionSpikeTime; //
 
 #ifdef HAVE_SYN_STATE_VARS
-// Base array with all state variables for all Connections (flat array indexed by i_conn * n_state_vars + state_idx)
-extern __device__ float* ConnectionStateVars;
+// Base array with all state variables for all Connections (flat array indexed
+// by i_conn * n_state_vars + state_idx)
+extern __device__ float *ConnectionStateVars;
 #endif
 
 extern int *d_SpikeBufferSize;
