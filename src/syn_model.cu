@@ -29,6 +29,9 @@
 #include "test_syn_model.h"
 #include <config.h>
 #include <iostream>
+// <<BEGIN_NESTML_GENERATED>>
+
+// <<END_NESTML_GENERATED>>
 
 int *d_SynGroupTypeMap;
 __device__ int *SynGroupTypeMap;
